@@ -1,0 +1,14 @@
+# Python
+server/venv/
+server/__pycache__/
+server/*.pyc
+server/.env
+
+# React
+client/node_modules/
+client/build/
+
+# Other
+*.pkl
+known_faces/
+.DS_Store
