@@ -23,8 +23,9 @@ function Navbar() {
         <span className="text-2xl font-bold text-cyan-400 tracking-widest">AttendX</span>
       </div>
       <div className="flex gap-3">
-        {navLink('/', '🏠', 'Home')}
-        {navLink('/register', '📝', 'Register')}
+        {navLink('/',  'Home')}
+        {navLink('/login', 'Login')}
+        {navLink('/register',  'Register')}
         {navLink('/reports', '📊', 'Reports')}
       </div>
     </nav>
