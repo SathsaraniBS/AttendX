@@ -2,5 +2,7 @@
   "venvPath": ".",
   "venv": "venv",
   "pythonVersion": "3.12",
-  "pythonPlatform": "Windows"
+  "pythonPlatform": "Windows",
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none"
 }

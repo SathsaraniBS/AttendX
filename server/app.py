@@ -11,9 +11,13 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'attendx_secret')
 
 db = SQLAlchemy(app)
+
+# Routes register කරන්න
+from app.routes.auth import auth_bp
+app.register_blueprint(auth_bp, url_prefix='/api/auth')
 
 @app.route('/api/health')
 def health():
