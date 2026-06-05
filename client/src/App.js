@@ -1,32 +1,34 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import LiveAttendance from './pages/LiveAttendance';
-import Classes from './pages/Classes';
+import AttendanceHistory from './pages/attendance/AttendanceHistory';
 import StudentList from './pages/students/StudentList';
 import AddStudent from './pages/students/AddStudent';
 import StudentProfile from './pages/students/StudentProfile';
-import DailyAttendance from './pages/attendance/DailyAttendance';
-import AttendanceHistory from './pages/attendance/AttendanceHistory';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Classes from './pages/Classes';
 import './index.css';
 
 function App() {
   return (
     <Router>
+      <Navbar />
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/live" element={<LiveAttendance />} />
-        <Route path="/classes" element={<Classes />} />
+        <Route path="/attendance" element={<AttendanceHistory />} />
         <Route path="/students" element={<StudentList />} />
         <Route path="/students/add" element={<AddStudent />} />
         <Route path="/students/:id" element={<StudentProfile />} />
-        <Route path="/attendance" element={<DailyAttendance />} />
-        <Route path="/attendance/history" element={<AttendanceHistory />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/classes" element={<Classes />} />
       </Routes>
     </Router>
   );

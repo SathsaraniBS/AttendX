@@ -51,7 +51,7 @@ const summaryData = [
 // ==================== SIDEBAR ====================
 const mainNavItems = [
   { path: '/live', icon: '📷', label: 'Mark Attendance' },
-  { path: '/attendance', icon: '🕐', label: 'Attendance History' },
+  { path: '/attendance-history', icon: '🕐', label: 'Attendance History' },
   { path: '/students', icon: '👥', label: 'Students' },
   { path: '/users', icon: '👤', label: 'Users' },
   { path: '/classes', icon: '📚', label: 'Classes' },
