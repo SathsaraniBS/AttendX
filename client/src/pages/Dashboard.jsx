@@ -51,19 +51,33 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
+  // ✅ FIXED — Safe JSON parse
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    if (!token) { navigate('/'); return; }
-    if (userData) setUser(JSON.parse(userData));
+
+    if (!token) {
+      navigate('/');
+      return;
+    }
+
+    try {
+      if (userData && userData !== 'undefined' && userData !== 'null') {
+        setUser(JSON.parse(userData));
+      }
+    } catch (err) {
+      console.error('Parse error:', err);
+      localStorage.clear();
+      navigate('/');
+    }
   }, [navigate]);
 
   const statCards = [
-    { label: 'Total Students', value: '240', sub: 'View all students →', icon: '👥', color: 'bg-blue-500', light: 'bg-blue-50' },
-    { label: 'Present Today', value: '186', sub: '77.50% of total', icon: '✅', color: 'bg-green-500', light: 'bg-green-50' },
-    { label: 'Absent Today', value: '54', sub: '22.50% of total', icon: '❌', color: 'bg-orange-500', light: 'bg-orange-50' },
-    { label: 'Total Classes', value: '12', sub: 'View all classes →', icon: '📅', color: 'bg-purple-500', light: 'bg-purple-50' },
-    { label: 'Attendance Rate', value: '77.50%', sub: 'This Month', icon: '📊', color: 'bg-blue-600', light: 'bg-blue-50' },
+    { label: 'Total Students', value: '240', sub: 'View all students →', icon: '👥', light: 'bg-blue-50' },
+    { label: 'Present Today', value: '186', sub: '77.50% of total', icon: '✅', light: 'bg-green-50' },
+    { label: 'Absent Today', value: '54', sub: '22.50% of total', icon: '❌', light: 'bg-orange-50' },
+    { label: 'Total Classes', value: '12', sub: 'View all classes →', icon: '📅', light: 'bg-purple-50' },
+    { label: 'Attendance Rate', value: '77.50%', sub: 'This Month', icon: '📊', light: 'bg-blue-50' },
   ];
 
   return (
@@ -74,7 +88,10 @@ export default function Dashboard() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-2">
             <span>📅</span>
-            <span>{new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })}</span>
+            <span>{new Date().toLocaleDateString('en-US', {
+              day: 'numeric', month: 'long',
+              year: 'numeric', weekday: 'long'
+            })}</span>
           </div>
           <button className="relative text-gray-500 hover:text-gray-700">
             <span className="text-xl">🔔</span>
@@ -109,7 +126,7 @@ export default function Dashboard() {
         {/* Charts Row */}
         <div className="grid grid-cols-3 gap-6 mb-6">
 
-          {/* Attendance Overview — Line Chart */}
+          {/* Line Chart */}
           <div className="col-span-2 bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-gray-800 font-semibold">Attendance Overview</h2>
@@ -159,7 +176,7 @@ export default function Dashboard() {
         {/* Bottom Row */}
         <div className="grid grid-cols-3 gap-6 mb-6">
 
-          {/* Attendance by Class — Pie Chart */}
+          {/* Pie Chart */}
           <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-gray-800 font-semibold">Attendance by Class</h2>
@@ -168,10 +185,10 @@ export default function Dashboard() {
               </select>
             </div>
             <div className="flex items-center gap-4">
-              <div className="relative">
-                <ResponsiveContainer width={130} height={130}>
+              <div className="relative w-32 h-32 flex-shrink-0">
+                <ResponsiveContainer width={128} height={128}>
                   <PieChart>
-                    <Pie data={classData} cx={60} cy={60} innerRadius={40} outerRadius={60} dataKey="value" startAngle={90} endAngle={-270}>
+                    <Pie data={classData} cx={60} cy={60} innerRadius={38} outerRadius={58} dataKey="value" startAngle={90} endAngle={-270}>
                       {classData.map((entry, i) => (
                         <Cell key={i} fill={entry.color}/>
                       ))}
@@ -180,24 +197,24 @@ export default function Dashboard() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <p className="text-lg font-bold text-gray-800">77.50%</p>
+                    <p className="text-sm font-bold text-gray-800">77.50%</p>
                     <p className="text-xs text-gray-400">Overall</p>
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 flex-1">
                 {classData.map((c, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }}></div>
-                    <span className="text-xs text-gray-500">{c.name}</span>
-                    <span className="text-xs font-medium text-gray-700 ml-auto">{c.value}%</span>
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: c.color }}></div>
+                    <span className="text-xs text-gray-500 flex-1">{c.name}</span>
+                    <span className="text-xs font-medium text-gray-700">{c.value}%</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Attendance Trend — Bar Chart */}
+          {/* Bar Chart */}
           <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-gray-800 font-semibold">Attendance Trend</h2>
@@ -241,7 +258,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Attendance Summary Table */}
+        {/* Summary Table + System Overview */}
         <div className="grid grid-cols-3 gap-6">
           <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100">
