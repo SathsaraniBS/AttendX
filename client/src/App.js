@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import LiveAttendance from './pages/LiveAttendance';
+import Classes from './pages/Classes';
 import StudentList from './pages/students/StudentList';
 import AddStudent from './pages/students/AddStudent';
 import StudentProfile from './pages/students/StudentProfile';
@@ -18,6 +19,7 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/live" element={<LiveAttendance />} />
+        <Route path="/classes" element={<Classes />} />
         <Route path="/students" element={<StudentList />} />
         <Route path="/students/add" element={<AddStudent />} />
         <Route path="/students/:id" element={<StudentProfile />} />
