@@ -3,6 +3,25 @@ import { Link, useLocation } from 'react-router-dom';
 function Navbar() {
   const location = useLocation();
 
+  // මේ pages වල Navbar hide කරනවා
+  const hideNavbarPaths = [
+    '/admin-dashboard',
+    '/live',
+    '/attendance',
+    '/reports',
+    '/settings',
+    '/classes',
+    '/notifications',
+    '/backup',
+    '/logs',
+  ];
+
+  const isHidden =
+    hideNavbarPaths.includes(location.pathname) ||
+    location.pathname.startsWith('/students');
+
+  if (isHidden) return null;
+
   const navLink = (path, icon, label) => (
     <Link
       to={path}
@@ -12,7 +31,8 @@ function Navbar() {
           : 'text-gray-400 hover:text-cyan-400 hover:bg-cyan-400/10'
         }`}
     >
-      <span>{icon}</span>{label}
+      <span>{icon}</span>
+      <span>{label}</span>
     </Link>
   );
 
@@ -23,10 +43,8 @@ function Navbar() {
         <span className="text-2xl font-bold text-cyan-400 tracking-widest">AttendX</span>
       </div>
       <div className="flex gap-3">
-        {navLink('/',  'Home')}
-        {navLink('/login', 'Login')}
-        {navLink('/register',  'Register')}
-        {navLink('/reports', '📊', 'Reports')}
+        {navLink('/', '🏠', 'Home')}
+        {navLink('/register', '📝', 'Register')}
       </div>
     </nav>
   );
