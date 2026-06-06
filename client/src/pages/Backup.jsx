@@ -12,7 +12,7 @@ import {
   MdFolder, MdCloud, MdComputer
 } from 'react-icons/md';
 import { FaDatabase, FaCloudUploadAlt, FaCloudDownloadAlt, FaHdd } from 'react-icons/fa';
-
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 // ==================== SAMPLE DATA ====================
 const sampleBackups = [
   {
@@ -179,7 +179,7 @@ export default function Backup() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

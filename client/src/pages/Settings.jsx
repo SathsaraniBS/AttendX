@@ -14,7 +14,7 @@ import {
   MdVisibilityOff, MdWarning
 } from 'react-icons/md';
 import { FaShieldAlt, FaDatabase } from 'react-icons/fa';
-
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 // ==================== SETTINGS PAGE ====================
 export default function Settings() {
   const navigate = useNavigate();
@@ -126,7 +126,7 @@ export default function Settings() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

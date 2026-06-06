@@ -4,6 +4,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
 // ==================== DATA ====================
 const attendanceData = [
@@ -48,101 +49,6 @@ const summaryData = [
   { period: 'This Month', totalClasses: 240, classesHeld: 235, present: 3560, absent: 1040, rate: '77.50%' },
 ];
 
-// ==================== SIDEBAR ====================
-const mainNavItems = [
-  { path: '/live', icon: '📷', label: 'Mark Attendance' },
-  { path: '/attendance-history', icon: '🕐', label: 'Attendance History' },
-  { path: '/students', icon: '👥', label: 'Students' },
-  { path: '/users', icon: '👤', label: 'Users' },
-  { path: '/classes', icon: '📚', label: 'Classes' },
-  { path: '/reports', icon: '📊', label: 'Reports' },
-];
-
-const settingsNavItems = [
-  { path: '/settings', icon: '⚙️', label: 'System Settings' },
-  { path: '/notifications', icon: '🔔', label: 'Notification' },
-  { path: '/backup', icon: '☁️', label: 'Backup' },
-  { path: '/logs', icon: '📋', label: 'Activity Logs' },
-];
-
-function Sidebar({ user, onLogout }) {
-  const location = useLocation();
-
-  const NavItem = ({ item }) => (
-    <Link to={item.path}
-      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 transition-all duration-200 text-sm
-        ${location.pathname === item.path
-          ? 'bg-blue-600 text-white'
-          : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-      <span className="text-base w-5 text-center">{item.icon}</span>
-      <span>{item.label}</span>
-    </Link>
-  );
-
-  return (
-    <aside className="fixed top-0 left-0 h-screen w-56 bg-[#0f1729] flex flex-col z-50 overflow-y-auto">
-
-      {/* Logo */}
-      <div className="px-4 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
-            <span className="text-white text-lg">👁️</span>
-          </div>
-          <div>
-            <p className="text-white font-bold text-sm leading-tight">FRAS</p>
-            <p className="text-gray-400 text-xs leading-tight">Face Recognition</p>
-            <p className="text-gray-400 text-xs leading-tight">Attendance System</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Dashboard Link */}
-      <div className="mt-4 mb-1">
-        <Link to="/admin-dashboard"
-          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 transition-all text-sm
-            ${location.pathname === '/admin-dashboard'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-          <span className="text-base w-5 text-center">🏠</span>
-          <span>Dashboard</span>
-        </Link>
-      </div>
-
-      {/* Main Section */}
-      <div className="px-4 py-2">
-        <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Main</p>
-      </div>
-      <nav className="space-y-0.5">
-        {mainNavItems.map(item => <NavItem key={item.path} item={item}/>)}
-      </nav>
-
-      {/* Settings Section */}
-      <div className="px-4 py-2 mt-4">
-        <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Settings</p>
-      </div>
-      <nav className="space-y-0.5">
-        {settingsNavItems.map(item => <NavItem key={item.path} item={item}/>)}
-      </nav>
-
-      {/* Admin Profile */}
-      <div className="mt-auto border-t border-white/10 p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {user?.name?.charAt(0) || 'A'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.name || 'Admin'}</p>
-            <p className="text-gray-400 text-xs truncate">System Administrator</p>
-          </div>
-          <button onClick={onLogout} title="Logout"
-            className="text-gray-400 hover:text-red-400 transition-all text-sm">
-            🚪
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
 
 // ==================== DASHBOARD ====================
 export default function AdminDashboard() {
@@ -180,8 +86,7 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen bg-gray-50">
 
       {/* SIDEBAR */}
-      <Sidebar user={user} onLogout={handleLogout}/>
-
+      <AdminSidebar user={user} onLogout={handleLogout}/>
       {/* MAIN CONTENT */}
       <div className="flex-1 ml-56">
 

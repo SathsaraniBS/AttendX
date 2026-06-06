@@ -10,7 +10,7 @@ import {
   MdClose, MdCheck, MdFilterList,
   MdSchool, MdPerson, MdAccessTime
 } from 'react-icons/md';
-
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
 // ==================== MODAL ====================
 function ClassModal({ isOpen, onClose, onSave, editData }) {
@@ -229,7 +229,7 @@ export default function Classes() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

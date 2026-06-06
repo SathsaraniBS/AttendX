@@ -15,8 +15,7 @@ import {
   XAxis, YAxis, Tooltip, Legend, ResponsiveContainer,
   AreaChart, Area
 } from 'recharts';
-
-
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 // ==================== DATA ====================
 const monthlyData = [
   { month: 'Jan', present: 88, absent: 12, late: 5 },
@@ -116,7 +115,7 @@ export default function Reports() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

@@ -10,9 +10,7 @@ import {
   MdTrendingUp, MdLogout, MdMenu
 } from 'react-icons/md';
 import { FaUserCheck, FaCamera } from 'react-icons/fa';
-
-
-
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
 // ==================== LIVE ATTENDANCE ====================
 export default function LiveAttendance() {
@@ -140,7 +138,7 @@ export default function LiveAttendance() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

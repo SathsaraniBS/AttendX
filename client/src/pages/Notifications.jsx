@@ -12,6 +12,7 @@ import {
   MdPerson, MdSchool, MdAccessTime
 } from 'react-icons/md';
 import { FaBell, FaBellSlash } from 'react-icons/fa';
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
 // ==================== SAMPLE NOTIFICATIONS ====================
 const generateNotifications = () => [
@@ -159,7 +160,7 @@ export default function Notifications() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 

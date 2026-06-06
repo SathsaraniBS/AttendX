@@ -15,6 +15,7 @@ import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
+import AdminSidebar from '../../components/AdminComponents/AdminSidebar';
 
 // ==================== SAMPLE DATA ====================
 const generateAttendanceData = () => {
@@ -182,8 +183,8 @@ export default function AttendanceHistory() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* <Sidebar user={user} onLogout={handleLogout}/> */}
-
+      <AdminSidebar user={user} onLogout={handleLogout}/>
+      
       <div className="flex-1 ml-56">
 
         {/* Top Bar */}
