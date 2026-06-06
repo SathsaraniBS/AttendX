@@ -18,9 +18,11 @@ db = SQLAlchemy(app)
 # Routes
 from app.routes.auth import auth_bp
 from app.routes.classes import classes_bp
+from app.routes.students import students_bp        # ✅ NEW
 
-app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(classes_bp, url_prefix='/api/classes')
+app.register_blueprint(auth_bp,      url_prefix='/api/auth')
+app.register_blueprint(classes_bp,   url_prefix='/api/classes')
+app.register_blueprint(students_bp,  url_prefix='/api/students')  # ✅ NEW
 
 @app.route('/api/health')
 def health():

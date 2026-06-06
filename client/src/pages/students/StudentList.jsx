@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   MdDashboard, MdPeople, MdClass, MdSettings,
@@ -10,10 +10,12 @@ import {
   MdClose, MdCheck, MdFilterList,
   MdPerson, MdEmail, MdPhone, MdBadge,
   MdCameraAlt, MdContentCopy, MdVisibilityOff,
-  MdDownload, MdUpload
+  MdDownload, MdUpload, MdRefresh
 } from 'react-icons/md';
 import { FaUserGraduate } from 'react-icons/fa';
 import AdminSidebar from '../../components/AdminComponents/AdminSidebar';
+
+const API_BASE = 'http://localhost:5000/api/students';
 
 // ==================== AUTO GENERATE PASSWORD ====================
 const generatePassword = () => {
@@ -33,16 +35,16 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editData) {
       setForm({ ...editData, password: '', photoPreview: editData.photo || null });
     } else {
-      const newPassword = generatePassword();
       setForm({
         name: '', studentId: `S${Date.now().toString().slice(-4)}`,
         email: '', phone: '', className: '',
-        password: newPassword, status: 'Active',
+        password: generatePassword(), status: 'Active',
         photo: null, photoPreview: null
       });
     }
@@ -62,8 +64,16 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const regeneratePassword = () => {
-    setForm(p => ({ ...p, password: generatePassword() }));
+  const regeneratePassword = () => setForm(p => ({ ...p, password: generatePassword() }));
+
+  const handleSubmit = async () => {
+    if (!form.name || !form.studentId || !form.email || !form.className) {
+      alert('Please fill all required fields!');
+      return;
+    }
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
   };
 
   if (!isOpen) return null;
@@ -91,21 +101,15 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
           <div className="flex items-center gap-5">
             <div className="relative">
               <div className="w-20 h-20 rounded-2xl bg-gray-100 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden">
-                {form.photoPreview ? (
-                  <img src={form.photoPreview} alt="preview"
-                    className="w-full h-full object-cover"/>
-                ) : (
-                  <MdPerson className="w-10 h-10 text-gray-300"/>
-                )}
+                {form.photoPreview
+                  ? <img src={form.photoPreview} alt="preview" className="w-full h-full object-cover"/>
+                  : <MdPerson className="w-10 h-10 text-gray-300"/>}
               </div>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
+              <button type="button" onClick={() => fileRef.current?.click()}
                 className="absolute -bottom-2 -right-2 w-7 h-7 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-blue-600 transition-all">
                 <MdCameraAlt className="w-4 h-4"/>
               </button>
-              <input ref={fileRef} type="file" accept="image/*"
-                className="hidden" onChange={handlePhoto}/>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhoto}/>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700">Student Photo</p>
@@ -117,46 +121,39 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
           {/* Name + ID */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                <MdPerson className="w-4 h-4 text-gray-400"/>
-                Full Name *
+              <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1">
+                <MdPerson className="w-4 h-4 text-gray-400"/> Full Name *
               </label>
               <input type="text" placeholder="e.g. Kasun Perera"
                 value={form.name}
                 onChange={e => setForm({...form, name: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                required/>
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                <MdBadge className="w-4 h-4 text-gray-400"/>
-                Student ID *
+              <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1">
+                <MdBadge className="w-4 h-4 text-gray-400"/> Student ID *
               </label>
               <input type="text" placeholder="e.g. S2024001"
                 value={form.studentId}
                 onChange={e => setForm({...form, studentId: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                required/>
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
           </div>
 
           {/* Email + Phone */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                <MdEmail className="w-4 h-4 text-gray-400"/>
-                Email Address *
+              <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1">
+                <MdEmail className="w-4 h-4 text-gray-400"/> Email Address *
               </label>
               <input type="email" placeholder="student@email.com"
                 value={form.email}
                 onChange={e => setForm({...form, email: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                required/>
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                <MdPhone className="w-4 h-4 text-gray-400"/>
-                Phone Number
+              <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1">
+                <MdPhone className="w-4 h-4 text-gray-400"/> Phone Number
               </label>
               <input type="tel" placeholder="e.g. 0771234567"
                 value={form.phone}
@@ -168,18 +165,14 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
           {/* Class + Status */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                <MdClass className="w-4 h-4 text-gray-400"/>
-                Class *
+              <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1">
+                <MdClass className="w-4 h-4 text-gray-400"/> Class *
               </label>
               <select value={form.className}
                 onChange={e => setForm({...form, className: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all bg-white"
-                required>
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all bg-white">
                 <option value="">Select Class</option>
-                {classes.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {classes.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
@@ -195,61 +188,49 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
           </div>
 
           {/* Password Section */}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-semibold text-gray-700">Login Credentials</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Share these credentials with the student
-                </p>
+          {!editData && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Login Credentials</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Share these credentials with the student</p>
+                </div>
+                <button type="button" onClick={regeneratePassword}
+                  className="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-all">
+                  Regenerate
+                </button>
               </div>
-              <button type="button" onClick={regeneratePassword}
-                className="text-xs text-blue-500 hover:text-blue-700 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-all">
-                Regenerate
-              </button>
-            </div>
 
-            {/* Email display */}
-            <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100 mb-2">
-              <p className="text-xs text-gray-400 mb-0.5">Email</p>
-              <p className="text-sm text-gray-700 font-medium">
-                {form.email || 'Enter email above'}
-              </p>
-            </div>
+              <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100 mb-2">
+                <p className="text-xs text-gray-400 mb-0.5">Email</p>
+                <p className="text-sm text-gray-700 font-medium">{form.email || 'Enter email above'}</p>
+              </div>
 
-            {/* Password display */}
-            <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100">
-              <p className="text-xs text-gray-400 mb-0.5">Password</p>
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-mono font-medium text-gray-800 tracking-wider">
-                  {showPassword ? form.password : '••••••••••'}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-gray-400 hover:text-gray-600 transition-all">
-                    {showPassword
-                      ? <MdVisibility className="w-4 h-4"/>
-                      : <MdVisibilityOff className="w-4 h-4"/>}
-                  </button>
-                  <button type="button" onClick={copyPassword}
-                    className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all
-                      ${copied
-                        ? 'bg-green-100 text-green-600'
-                        : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}>
-                    {copied
-                      ? <><MdCheck className="w-3 h-3"/> Copied!</>
-                      : <><MdContentCopy className="w-3 h-3"/> Copy</>}
-                  </button>
+              <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100">
+                <p className="text-xs text-gray-400 mb-0.5">Password</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-mono font-medium text-gray-800 tracking-wider">
+                    {showPassword ? form.password : '••••••••••'}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setShowPassword(!showPassword)}
+                      className="text-gray-400 hover:text-gray-600 transition-all">
+                      {showPassword ? <MdVisibility className="w-4 h-4"/> : <MdVisibilityOff className="w-4 h-4"/>}
+                    </button>
+                    <button type="button" onClick={copyPassword}
+                      className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all
+                        ${copied ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}>
+                      {copied ? <><MdCheck className="w-3 h-3"/> Copied!</> : <><MdContentCopy className="w-3 h-3"/> Copy</>}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
-              <MdEmail className="w-3 h-3"/>
-              Student can login using email + password above
-            </p>
-          </div>
+              <p className="text-xs text-blue-400 mt-2 flex items-center gap-1">
+                <MdEmail className="w-3 h-3"/> Student can login using email + password above
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -258,10 +239,11 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 transition-all">
             Cancel
           </button>
-          <button onClick={() => onSave(form)}
-            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
-            <MdCheck className="w-4 h-4"/>
-            {editData ? 'Update Student' : 'Add Student'}
+          <button onClick={handleSubmit} disabled={saving}
+            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+            {saving
+              ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Saving...</>
+              : <><MdCheck className="w-4 h-4"/> {editData ? 'Update Student' : 'Add Student'}</>}
           </button>
         </div>
       </div>
@@ -270,23 +252,13 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
 }
 
 // ==================== STUDENT LIST PAGE ====================
-const sampleStudents = [
-  { id: 1, name: 'Kasun Perera', studentId: 'S2024001', email: 'kasun@student.com', phone: '0771234567', className: 'BCA - 2A', status: 'Active', attendance: 85, photo: null, joinDate: '2024-01-15' },
-  { id: 2, name: 'Nimal Silva', studentId: 'S2024002', email: 'nimal@student.com', phone: '0777654321', className: 'BCA - 2A', status: 'Active', attendance: 72, photo: null, joinDate: '2024-01-15' },
-  { id: 3, name: 'Amali Fernando', studentId: 'S2024003', email: 'amali@student.com', phone: '0761234567', className: 'BCA - 2B', status: 'Active', attendance: 91, photo: null, joinDate: '2024-01-16' },
-  { id: 4, name: 'Sathsarani BS', studentId: 'S2024004', email: 'sathsarani@student.com', phone: '0752345678', className: 'BCA - 2B', status: 'Active', attendance: 88, photo: null, joinDate: '2024-01-16' },
-  { id: 5, name: 'Bandara Perera', studentId: 'S2024005', email: 'bandara@student.com', phone: '0712345678', className: 'BCA - 3A', status: 'Inactive', attendance: 45, photo: null, joinDate: '2024-01-17' },
-  { id: 6, name: 'Chamara Silva', studentId: 'S2024006', email: 'chamara@student.com', phone: '0723456789', className: 'BCA - 3A', status: 'Active', attendance: 78, photo: null, joinDate: '2024-01-17' },
-  { id: 7, name: 'Dilani Jayawardena', studentId: 'S2024007', email: 'dilani@student.com', phone: '0734567890', className: 'BCA - 3B', status: 'Active', attendance: 93, photo: null, joinDate: '2024-01-18' },
-  { id: 8, name: 'Eranga Bandara', studentId: 'S2024008', email: 'eranga@student.com', phone: '0745678901', className: 'BCA - 1A', status: 'Suspended', attendance: 30, photo: null, joinDate: '2024-01-18' },
-];
-
-const classOptions = ['BCA - 1A', 'BCA - 2A', 'BCA - 2B', 'BCA - 3A', 'BCA - 3B', 'MCA - 1A'];
+const classOptions = ['BSc IT - Year 1A', 'BSc IT - Year 2A', 'BSc IT - Year 3A', 'BCA - 1A', 'BCA - 2A', 'MCA - 1A'];
 
 export default function StudentList() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [students, setStudents] = useState(sampleStudents);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterClass, setFilterClass] = useState('All');
@@ -296,15 +268,36 @@ export default function StudentList() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [toast, setToast] = useState(null);
 
+  // ==================== AUTH CHECK ====================
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token) { navigate('/'); return; }
     try {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
-    } catch { navigate('/'); }
+    } catch { navigate('/'); return; }
+
+    fetchStudents();
   }, [navigate]);
 
+  // ==================== FETCH STUDENTS FROM API ====================
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await axios.get(`${API_BASE}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStudents(res.data);
+    } catch (err) {
+      console.error('Failed to fetch students:', err);
+      showToast('Failed to load students from server!', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==================== TOAST ====================
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -315,60 +308,79 @@ export default function StudentList() {
     navigate('/');
   };
 
+  // ==================== FILTER ====================
   const filtered = students.filter(s => {
     const matchSearch =
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.studentId.toLowerCase().includes(search.toLowerCase()) ||
-      s.email.toLowerCase().includes(search.toLowerCase());
+      s.name?.toLowerCase().includes(search.toLowerCase()) ||
+      s.studentId?.toLowerCase().includes(search.toLowerCase()) ||
+      s.email?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || s.status === filterStatus;
     const matchClass = filterClass === 'All' || s.className === filterClass;
     return matchSearch && matchStatus && matchClass;
   });
 
+  // ==================== SAVE (ADD / EDIT) ====================
   const handleSave = async (form) => {
     try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
       if (editData) {
-        setStudents(prev => prev.map(s =>
-          s.id === editData.id ? { ...s, ...form, id: editData.id } : s
-        ));
+        // UPDATE existing student
+        await axios.put(`${API_BASE}/${editData.id}`, form, { headers });
         showToast('Student updated successfully!');
       } else {
-        const newStudent = {
-          ...form,
-          id: Date.now(),
-          attendance: 0,
-          joinDate: new Date().toISOString().split('T')[0],
-          photo: form.photoPreview || null,
-        };
-        setStudents(prev => [...prev, newStudent]);
-
-        // await axios.post('http://localhost:5000/api/students/add', form);
-
-        showToast(`Student ${form.name} added! Credentials sent to ${form.email}`);
+        // ADD new student
+        await axios.post(`${API_BASE}/add`, form, { headers });
+        showToast(`Student ${form.name} added successfully!`);
       }
+
+      // Refresh list from DB
+      await fetchStudents();
       setModalOpen(false);
       setEditData(null);
     } catch (err) {
-      showToast('Error saving student!', 'error');
+      console.error('Save error:', err);
+      const msg = err.response?.data?.error || 'Error saving student!';
+      showToast(msg, 'error');
     }
   };
 
-  const handleDelete = (id) => {
-    setStudents(prev => prev.filter(s => s.id !== id));
-    setDeleteId(null);
-    showToast('Student deleted successfully!');
+  // ==================== DELETE ====================
+  const handleDelete = async (id) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE}/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchStudents();
+      setDeleteId(null);
+      showToast('Student deleted successfully!');
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast('Error deleting student!', 'error');
+    }
   };
 
-  const handleBulkDelete = () => {
-    setStudents(prev => prev.filter(s => !selectedIds.includes(s.id)));
-    setSelectedIds([]);
-    showToast(`${selectedIds.length} students deleted!`);
+  // ==================== BULK DELETE ====================
+  const handleBulkDelete = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+      await Promise.all(
+        selectedIds.map(id => axios.delete(`${API_BASE}/${id}`, { headers }))
+      );
+      await fetchStudents();
+      showToast(`${selectedIds.length} students deleted!`);
+      setSelectedIds([]);
+    } catch (err) {
+      showToast('Error deleting students!', 'error');
+    }
   };
 
+  // ==================== SELECT ====================
   const toggleSelect = (id) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
-    );
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const toggleSelectAll = () => {
@@ -376,6 +388,7 @@ export default function StudentList() {
     else setSelectedIds(filtered.map(s => s.id));
   };
 
+  // ==================== HELPERS ====================
   const statusColor = (status) => {
     if (status === 'Active') return 'bg-green-50 text-green-600 border-green-100';
     if (status === 'Suspended') return 'bg-red-50 text-red-500 border-red-100';
@@ -392,13 +405,20 @@ export default function StudentList() {
     { label: 'Total Students', value: students.length, icon: MdPeople, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Active Students', value: students.filter(s => s.status === 'Active').length, icon: MdCheck, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Inactive / Suspended', value: students.filter(s => s.status !== 'Active').length, icon: MdClose, color: 'text-red-500', bg: 'bg-red-50' },
-    { label: 'Avg Attendance', value: `${Math.round(students.reduce((a, s) => a + s.attendance, 0) / students.length)}%`, icon: MdBarChart, color: 'text-purple-600', bg: 'bg-purple-50' },
+    {
+      label: 'Avg Attendance',
+      value: students.length > 0
+        ? `${Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)}%`
+        : '0%',
+      icon: MdBarChart, color: 'text-purple-600', bg: 'bg-purple-50'
+    },
   ];
 
+  // ==================== RENDER ====================
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar user={user} onLogout={handleLogout}/>
-      
+
       <div className="flex-1 ml-56">
 
         {/* Top Bar */}
@@ -411,6 +431,12 @@ export default function StudentList() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* Refresh Button */}
+            <button onClick={fetchStudents}
+              className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-all">
+              <MdRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/>
+              Refresh
+            </button>
             <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
               <MdCalendarToday className="w-4 h-4"/>
               <span>{new Date().toLocaleDateString('en-US', {
@@ -462,9 +488,7 @@ export default function StudentList() {
                 {['All', 'Active', 'Inactive', 'Suspended'].map(s => (
                   <button key={s} onClick={() => setFilterStatus(s)}
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-all
-                      ${filterStatus === s
-                        ? 'bg-blue-500 text-white'
-                        : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                      ${filterStatus === s ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     {s}
                   </button>
                 ))}
@@ -505,139 +529,139 @@ export default function StudentList() {
 
           {/* Table */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  <th className="px-4 py-3 w-10">
-                    <input type="checkbox"
-                      checked={selectedIds.length === filtered.length && filtered.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-500 cursor-pointer"/>
-                  </th>
-                  {['Student', 'Student ID', 'Email', 'Phone', 'Class', 'Attendance', 'Status', 'Joined', 'Actions'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s, i) => (
-                  <tr key={s.id}
-                    className={`border-b border-gray-50 hover:bg-gray-50 transition-all
-                      ${selectedIds.includes(s.id) ? 'bg-blue-50' : ''}`}>
-                    <td className="px-4 py-3">
-                      <input type="checkbox"
-                        checked={selectedIds.includes(s.id)}
-                        onChange={() => toggleSelect(s.id)}
-                        className="w-4 h-4 rounded border-gray-300 text-blue-500 cursor-pointer"/>
-                    </td>
 
-                    {/* Student Info */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center">
-                          {s.photo ? (
-                            <img src={s.photo} alt={s.name} className="w-full h-full object-cover"/>
-                          ) : (
-                            <span className="text-blue-600 font-bold text-sm">
-                              {s.name.charAt(0)}
-                            </span>
-                          )}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{s.name}</p>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
-                        {s.studentId}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-3 text-xs text-gray-500">{s.email}</td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{s.phone}</td>
-                    <td className="px-4 py-3">
-                      <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
-                        {s.className}
-                      </span>
-                    </td>
-
-                    {/* Attendance */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-1.5 bg-gray-100 rounded-full">
-                          <div
-                            className={`h-1.5 rounded-full ${s.attendance >= 85 ? 'bg-green-400' : s.attendance >= 70 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                            style={{ width: `${s.attendance}%` }}></div>
-                        </div>
-                        <span className={`text-xs font-semibold ${attendanceColor(s.attendance)}`}>
-                          {s.attendance}%
-                        </span>
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusColor(s.status)}`}>
-                        {s.status}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-3 text-xs text-gray-400">{s.joinDate}</td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => { setEditData(s); setModalOpen(true); }}
-                          className="p-1.5 text-blue-400 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Edit">
-                          <MdEdit className="w-4 h-4"/>
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(s.id)}
-                          className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all"
-                          title="Delete">
-                          <MdDelete className="w-4 h-4"/>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Empty State */}
-            {filtered.length === 0 && (
+            {/* Loading State */}
+            {loading ? (
               <div className="text-center py-16">
-                <FaUserGraduate className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
-                <p className="text-gray-400 font-medium">No students found</p>
-                <p className="text-gray-300 text-sm mt-1">Try adjusting your search or filters</p>
-                <button
-                  onClick={() => { setEditData(null); setModalOpen(true); }}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-xl mx-auto hover:bg-blue-600 transition-all">
-                  <MdAdd className="w-4 h-4"/>
-                  Add First Student
-                </button>
+                <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"/>
+                <p className="text-gray-400 text-sm">Loading students from database...</p>
               </div>
-            )}
+            ) : (
+              <>
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="px-4 py-3 w-10">
+                        <input type="checkbox"
+                          checked={selectedIds.length === filtered.length && filtered.length > 0}
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-500 cursor-pointer"/>
+                      </th>
+                      {['Student', 'Student ID', 'Email', 'Phone', 'Class', 'Attendance', 'Status', 'Joined', 'Actions'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((s) => (
+                      <tr key={s.id}
+                        className={`border-b border-gray-50 hover:bg-gray-50 transition-all
+                          ${selectedIds.includes(s.id) ? 'bg-blue-50' : ''}`}>
+                        <td className="px-4 py-3">
+                          <input type="checkbox"
+                            checked={selectedIds.includes(s.id)}
+                            onChange={() => toggleSelect(s.id)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-500 cursor-pointer"/>
+                        </td>
 
-            {/* Pagination */}
-            {filtered.length > 0 && (
-              <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center">
-                <p className="text-xs text-gray-400">
-                  Showing {filtered.length} of {students.length} students
-                </p>
-                <div className="flex items-center gap-1">
-                  <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                    Previous
-                  </button>
-                  <button className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs">1</button>
-                  <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                    Next
-                  </button>
-                </div>
-              </div>
+                        {/* Student Info */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center">
+                              {s.photo
+                                ? <img src={s.photo} alt={s.name} className="w-full h-full object-cover"/>
+                                : <span className="text-blue-600 font-bold text-sm">{s.name?.charAt(0)}</span>}
+                            </div>
+                            <p className="text-sm font-medium text-gray-800">{s.name}</p>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
+                            {s.studentId}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3 text-xs text-gray-500">{s.email}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{s.phone || '—'}</td>
+
+                        <td className="px-4 py-3">
+                          <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
+                            {s.className}
+                          </span>
+                        </td>
+
+                        {/* Attendance */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-gray-100 rounded-full">
+                              <div
+                                className={`h-1.5 rounded-full ${(s.attendance || 0) >= 85 ? 'bg-green-400' : (s.attendance || 0) >= 70 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                                style={{ width: `${s.attendance || 0}%` }}/>
+                            </div>
+                            <span className={`text-xs font-semibold ${attendanceColor(s.attendance || 0)}`}>
+                              {s.attendance || 0}%
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusColor(s.status)}`}>
+                            {s.status}
+                          </span>
+                        </td>
+
+                        <td className="px-4 py-3 text-xs text-gray-400">{s.joinDate || '—'}</td>
+
+                        {/* Actions */}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => { setEditData(s); setModalOpen(true); }}
+                              className="p-1.5 text-blue-400 hover:bg-blue-50 rounded-lg transition-all" title="Edit">
+                              <MdEdit className="w-4 h-4"/>
+                            </button>
+                            <button
+                              onClick={() => setDeleteId(s.id)}
+                              className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all" title="Delete">
+                              <MdDelete className="w-4 h-4"/>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Empty State */}
+                {filtered.length === 0 && (
+                  <div className="text-center py-16">
+                    <FaUserGraduate className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
+                    <p className="text-gray-400 font-medium">No students found</p>
+                    <p className="text-gray-300 text-sm mt-1">Try adjusting your search or filters</p>
+                    <button
+                      onClick={() => { setEditData(null); setModalOpen(true); }}
+                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-xl mx-auto hover:bg-blue-600 transition-all">
+                      <MdAdd className="w-4 h-4"/>
+                      Add First Student
+                    </button>
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {filtered.length > 0 && (
+                  <div className="px-5 py-3 border-t border-gray-100 flex justify-between items-center">
+                    <p className="text-xs text-gray-400">
+                      Showing {filtered.length} of {students.length} students
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-all">Previous</button>
+                      <button className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs">1</button>
+                      <button className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs text-gray-500 hover:bg-gray-50 transition-all">Next</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -677,12 +701,10 @@ export default function StudentList() {
         </div>
       )}
 
-      {/* Toast Notification */}
+      {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50 transition-all
-          ${toast.type === 'error'
-            ? 'bg-red-500 text-white'
-            : 'bg-gray-900 text-white'}`}>
+          ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
           {toast.type === 'error'
             ? <MdClose className="w-4 h-4"/>
             : <MdCheck className="w-4 h-4 text-green-400"/>}
