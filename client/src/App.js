@@ -9,8 +9,10 @@ import StudentList from './pages/students/StudentList';
 import AddStudent from './pages/students/AddStudent';
 import StudentProfile from './pages/students/StudentProfile';
 import Reports from './pages/Reports';
-import Settings from './pages/Settings';
 import Classes from './pages/Classes';
+
+import Settings from './pages/Settings';
+import Notifications from './pages/Notifications';
 import './index.css';
 
 function App() {
@@ -27,8 +29,11 @@ function App() {
         <Route path="/students/add" element={<AddStudent />} />
         <Route path="/students/:id" element={<StudentProfile />} />
         <Route path="/reports" element={<Reports />} />
-        <Route path="/settings" element={<Settings />} />
         <Route path="/classes" element={<Classes />} />
+
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/notifications" element={<Notifications />} />
+
       </Routes>
     </Router>
   );

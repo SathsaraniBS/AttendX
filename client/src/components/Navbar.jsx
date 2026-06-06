@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 function Navbar() {
   const location = useLocation();
 
-  // මේ pages වල Navbar hide කරනවා
   const hideNavbarPaths = [
     '/admin-dashboard',
     '/live',
