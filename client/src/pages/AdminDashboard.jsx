@@ -98,9 +98,9 @@ function Sidebar({ user, onLogout }) {
 
       {/* Dashboard Link */}
       <div className="mt-4 mb-1">
-        <Link to="/dashboard"
+        <Link to="/admin-dashboard"
           className={`flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 transition-all text-sm
-            ${location.pathname === '/dashboard'
+            ${location.pathname === '/admin-dashboard'
               ? 'bg-blue-600 text-white'
               : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
           <span className="text-base w-5 text-center">🏠</span>
@@ -145,7 +145,7 @@ function Sidebar({ user, onLogout }) {
 }
 
 // ==================== DASHBOARD ====================
-export default function Dashboard() {
+export default function AdminDashboard() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
