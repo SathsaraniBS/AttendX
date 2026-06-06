@@ -13,6 +13,8 @@ import Classes from './pages/Classes';
 
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
+import Backup from './pages/Backup';
+import Logs from './pages/Logs';
 import './index.css';
 
 function App() {
@@ -33,7 +35,9 @@ function App() {
 
         <Route path="/settings" element={<Settings />} />
         <Route path="/notifications" element={<Notifications />} />
-
+        <Route path="/backup" element={<Backup />} />
+        <Route path="/logs" element={<Logs />} />
+        
       </Routes>
     </Router>
   );
