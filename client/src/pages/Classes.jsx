@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
-  MdLogout, MdMenu, MdAdd, MdSearch,
-  MdEdit, MdDelete, MdCalendarToday,
-  MdClose, MdCheck, MdFilterList,
+  MdClass, MdPeople, MdBarChart,
+  MdMenu, MdAdd, MdSearch, MdEdit, MdDelete,
+  MdCalendarToday, MdClose, MdCheck, MdFilterList,
   MdSchool, MdPerson, MdAccessTime
 } from 'react-icons/md';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
+
+const API = 'http://localhost:5000/api/classes';
+const STORAGE_KEY = 'attendx_classes';
 
 // ==================== MODAL ====================
 function ClassModal({ isOpen, onClose, onSave, editData }) {
@@ -21,7 +21,10 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
 
   useEffect(() => {
     if (editData) setForm(editData);
-    else setForm({ name: '', code: '', teacher: '', schedule: '', room: '', capacity: '', status: 'Active' });
+    else setForm({
+      name: '', code: '', teacher: '',
+      schedule: '', room: '', capacity: '', status: 'Active'
+    });
   }, [editData, isOpen]);
 
   if (!isOpen) return null;
@@ -29,8 +32,6 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl">
-
-        {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-2">
             <MdClass className="w-5 h-5 text-blue-500"/>
@@ -38,88 +39,67 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
               {editData ? 'Edit Class' : 'Add New Class'}
             </h2>
           </div>
-          <button onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-all">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <MdClose className="w-5 h-5"/>
           </button>
         </div>
 
-        {/* Form */}
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1 block">Class Name</label>
-              <input
-                type="text"
-                placeholder="e.g. BCA - 2A"
+              <label className="text-gray-700 text-sm font-medium mb-1 block">Class Name *</label>
+              <input type="text" placeholder="e.g. BSc IT - Year 1A"
                 value={form.name}
                 onChange={e => setForm({...form, name: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-              />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
-              <label className="text-gray-700 text-sm font-medium mb-1 block">Class Code</label>
-              <input
-                type="text"
-                placeholder="e.g. CS-2A-2024"
+              <label className="text-gray-700 text-sm font-medium mb-1 block">Class Code *</label>
+              <input type="text" placeholder="e.g. BSIT-1A-2024"
                 value={form.code}
                 onChange={e => setForm({...form, code: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-              />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
           </div>
 
           <div>
-            <label className="text-gray-700 text-sm font-medium mb-1 block">Teacher / Lecturer</label>
-            <input
-              type="text"
-              placeholder="e.g. Dr. Perera"
+            <label className="text-gray-700 text-sm font-medium mb-1 block">Teacher / Lecturer *</label>
+            <input type="text" placeholder="e.g. Dr. Kasun Perera"
               value={form.teacher}
               onChange={e => setForm({...form, teacher: e.target.value})}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-            />
+              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-gray-700 text-sm font-medium mb-1 block">Schedule</label>
-              <input
-                type="text"
-                placeholder="e.g. Mon, Wed 09:00 AM"
+              <input type="text" placeholder="e.g. Mon, Wed 09:00 AM"
                 value={form.schedule}
                 onChange={e => setForm({...form, schedule: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-              />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
               <label className="text-gray-700 text-sm font-medium mb-1 block">Room</label>
-              <input
-                type="text"
-                placeholder="e.g. Room 101"
+              <input type="text" placeholder="e.g. Room 101"
                 value={form.room}
                 onChange={e => setForm({...form, room: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-              />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-gray-700 text-sm font-medium mb-1 block">Capacity</label>
-              <input
-                type="number"
-                placeholder="e.g. 40"
+              <input type="number" placeholder="e.g. 40"
                 value={form.capacity}
                 onChange={e => setForm({...form, capacity: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-              />
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
               <label className="text-gray-700 text-sm font-medium mb-1 block">Status</label>
-              <select
-                value={form.status}
+              <select value={form.status}
                 onChange={e => setForm({...form, status: e.target.value})}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all bg-white">
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                 <option>Active</option>
                 <option>Inactive</option>
                 <option>On Break</option>
@@ -128,13 +108,18 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex gap-3 px-6 py-4 border-t border-gray-100">
           <button onClick={onClose}
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 transition-all">
             Cancel
           </button>
-          <button onClick={() => onSave(form)}
+          <button onClick={() => {
+            if (!form.name || !form.code || !form.teacher) {
+              alert('Name, Code, Teacher required!');
+              return;
+            }
+            onSave(form);
+          }}
             className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
             <MdCheck className="w-4 h-4"/>
             {editData ? 'Update Class' : 'Add Class'}
@@ -146,25 +131,18 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
 }
 
 // ==================== CLASSES PAGE ====================
-const sampleClasses = [
-  { id: 1, name: 'BCA - 2A', code: 'CS-2A-2024', teacher: 'Dr. Perera', schedule: 'Mon, Wed 09:00 AM', room: 'Room 101', capacity: 40, enrolled: 35, attendance: 82, status: 'Active' },
-  { id: 2, name: 'BCA - 2B', code: 'CS-2B-2024', teacher: 'Dr. Silva', schedule: 'Tue, Thu 10:00 AM', room: 'Room 102', capacity: 40, enrolled: 38, attendance: 75, status: 'Active' },
-  { id: 3, name: 'BCA - 3A', code: 'CS-3A-2024', teacher: 'Prof. Fernando', schedule: 'Mon, Fri 11:00 AM', room: 'Room 201', capacity: 35, enrolled: 30, attendance: 88, status: 'Active' },
-  { id: 4, name: 'BCA - 3B', code: 'CS-3B-2024', teacher: 'Dr. Bandara', schedule: 'Wed, Fri 02:00 PM', room: 'Room 202', capacity: 35, enrolled: 32, attendance: 70, status: 'Active' },
-  { id: 5, name: 'BCA - 1A', code: 'CS-1A-2024', teacher: 'Dr. Jayawardena', schedule: 'Tue, Thu 08:00 AM', room: 'Room 301', capacity: 45, enrolled: 42, attendance: 91, status: 'Active' },
-  { id: 6, name: 'MCA - 1A', code: 'MCA-1A-2024', teacher: 'Prof. Kumari', schedule: 'Mon, Wed 03:00 PM', room: 'Room 401', capacity: 30, enrolled: 25, attendance: 65, status: 'On Break' },
-];
-
 export default function Classes() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [classes, setClasses] = useState(sampleClasses);
+  const [classes, setClasses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
-  const [view, setView] = useState('grid'); // grid | table
+  const [view, setView] = useState('grid');
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -173,57 +151,135 @@ export default function Classes() {
     try {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
     } catch { navigate('/'); }
+    fetchClasses();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/');
+  // ✅ localStorage + API hybrid fetch
+  const fetchClasses = async () => {
+    setLoading(true);
+
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        setClasses(JSON.parse(cached));
+        setLoading(false);
+      }
+    } catch { /* ignore */ }
+
+    try {
+      const res = await axios.get(API, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        timeout: 3000
+      });
+      const data = res.data || [];
+      setClasses(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) setClasses(JSON.parse(cached));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveToStorage = (data) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  };
+
+  const handleLogout = () => { localStorage.clear(); navigate('/'); };
+
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
   };
 
   const filtered = classes.filter(c => {
     const matchSearch =
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.teacher.toLowerCase().includes(search.toLowerCase()) ||
-      c.code.toLowerCase().includes(search.toLowerCase());
+      c.name?.toLowerCase().includes(search.toLowerCase()) ||
+      c.teacher?.toLowerCase().includes(search.toLowerCase()) ||
+      c.code?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || c.status === filterStatus;
     return matchSearch && matchStatus;
   });
 
-  const handleSave = (form) => {
-    if (editData) {
-      setClasses(prev => prev.map(c => c.id === editData.id ? { ...form, id: editData.id, enrolled: editData.enrolled, attendance: editData.attendance } : c));
-    } else {
-      setClasses(prev => [...prev, {
-        ...form, id: Date.now(),
-        enrolled: 0, attendance: 0,
-        capacity: parseInt(form.capacity) || 0
-      }]);
+  // ✅ Add / Edit — API + localStorage
+  const handleSave = async (form) => {
+    try {
+      if (editData) {
+        // Try API
+        try {
+          await axios.put(`${API}/${editData.id}`, form, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+        } catch { /* API — local only */ }
+
+        const updated = classes.map(c =>
+          c.id === editData.id ? { ...c, ...form, id: editData.id } : c
+        );
+        setClasses(updated);
+        saveToStorage(updated);
+        showToast('Class updated successfully!');
+      } else {
+        // Try API
+        let newClass;
+        try {
+          const res = await axios.post(API, form, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          newClass = res.data;
+        } catch {
+          // Local create
+          newClass = {
+            ...form,
+            id: Date.now(),
+            enrolled: 0,
+            attendance: 0,
+            capacity: parseInt(form.capacity) || 0
+          };
+        }
+        const updated = [...classes, newClass];
+        setClasses(updated);
+        saveToStorage(updated);
+        showToast('Class added successfully!');
+      }
+    } catch (err) {
+      showToast('Something went wrong!', 'error');
     }
     setModalOpen(false);
     setEditData(null);
   };
 
-  const handleDelete = (id) => {
-    setClasses(prev => prev.filter(c => c.id !== id));
+  // ✅ Delete — API + localStorage
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${API}/${id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+    } catch { /* local only */ }
+
+    const updated = classes.filter(c => c.id !== id);
+    setClasses(updated);
+    saveToStorage(updated);
     setDeleteId(null);
+    showToast('Class deleted!');
   };
 
   const stats = [
     { label: 'Total Classes', value: classes.length, icon: MdClass, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Active Classes', value: classes.filter(c => c.status === 'Active').length, icon: MdCheck, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Total Students', value: classes.reduce((a, c) => a + c.enrolled, 0), icon: MdPeople, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Avg Attendance', value: `${Math.round(classes.reduce((a, c) => a + c.attendance, 0) / classes.length)}%`, icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Students', value: classes.reduce((a, c) => a + (c.enrolled || 0), 0), icon: MdPeople, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Avg Attendance', value: classes.length > 0 ? `${Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)}%` : '0%', icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
-  const statusColor = (status) => {
-    if (status === 'Active') return 'bg-green-50 text-green-600 border-green-100';
-    if (status === 'On Break') return 'bg-yellow-50 text-yellow-600 border-yellow-100';
+  const statusColor = (s) => {
+    if (s === 'Active') return 'bg-green-50 text-green-600 border-green-100';
+    if (s === 'On Break') return 'bg-yellow-50 text-yellow-600 border-yellow-100';
     return 'bg-red-50 text-red-500 border-red-100';
   };
 
-  const attendanceColor = (rate) => {
-    if (rate >= 85) return 'bg-green-500';
-    if (rate >= 70) return 'bg-yellow-400';
+  const attendanceColor = (r) => {
+    if (r >= 85) return 'bg-green-500';
+    if (r >= 70) return 'bg-yellow-400';
     return 'bg-red-400';
   };
 
@@ -279,35 +335,24 @@ export default function Classes() {
           {/* Toolbar */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
             <div className="flex items-center gap-3 flex-wrap">
-
-              {/* Search */}
               <div className="relative flex-1 min-w-48">
                 <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
-                <input
-                  type="text"
-                  placeholder="Search classes, teachers..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                />
+                <input type="text" placeholder="Search classes, teachers..."
+                  value={search} onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
               </div>
 
-              {/* Status Filter */}
               <div className="flex items-center gap-2">
                 <MdFilterList className="w-4 h-4 text-gray-400"/>
                 {['All', 'Active', 'Inactive', 'On Break'].map(s => (
-                  <button key={s}
-                    onClick={() => setFilterStatus(s)}
+                  <button key={s} onClick={() => setFilterStatus(s)}
                     className={`px-3 py-2 rounded-lg text-xs font-medium transition-all
-                      ${filterStatus === s
-                        ? 'bg-blue-500 text-white'
-                        : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                      ${filterStatus === s ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     {s}
                   </button>
                 ))}
               </div>
 
-              {/* View Toggle */}
               <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
                 <button onClick={() => setView('grid')}
                   className={`px-3 py-2 text-xs transition-all ${view === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
@@ -319,105 +364,111 @@ export default function Classes() {
                 </button>
               </div>
 
-              {/* Add Button */}
-              <button
-                onClick={() => { setEditData(null); setModalOpen(true); }}
+              <button onClick={() => { setEditData(null); setModalOpen(true); }}
                 className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all ml-auto">
-                <MdAdd className="w-4 h-4"/>
-                Add Class
+                <MdAdd className="w-4 h-4"/> Add Class
               </button>
             </div>
           </div>
 
+          {/* Loading */}
+          {loading && (
+            <div className="flex items-center justify-center py-16">
+              <svg className="w-8 h-8 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+            </div>
+          )}
+
           {/* GRID VIEW */}
-          {view === 'grid' && (
+          {!loading && view === 'grid' && (
             <div className="grid grid-cols-3 gap-5">
               {filtered.map(cls => (
                 <div key={cls.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
-
-                  {/* Card Header */}
                   <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="text-white font-bold text-lg">{cls.name}</h3>
+                        <h3 className="text-white font-bold text-base">{cls.name}</h3>
                         <p className="text-blue-100 text-xs mt-0.5">{cls.code}</p>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full border font-medium ${statusColor(cls.status)} bg-white`}>
+                      <span className={`text-xs px-2 py-1 rounded-full border font-medium bg-white ${statusColor(cls.status)}`}>
                         {cls.status}
                       </span>
                     </div>
                   </div>
 
-                  {/* Card Body */}
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 space-y-2.5">
                     <div className="flex items-center gap-2 text-gray-600 text-sm">
                       <MdPerson className="w-4 h-4 text-gray-400 flex-shrink-0"/>
                       <span className="truncate">{cls.teacher}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600 text-sm">
                       <MdAccessTime className="w-4 h-4 text-gray-400 flex-shrink-0"/>
-                      <span className="truncate">{cls.schedule}</span>
+                      <span className="truncate">{cls.schedule || '—'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600 text-sm">
                       <MdSchool className="w-4 h-4 text-gray-400 flex-shrink-0"/>
-                      <span>{cls.room}</span>
+                      <span>{cls.room || '—'}</span>
                     </div>
 
-                    {/* Enrolled */}
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>Enrolled: {cls.enrolled}/{cls.capacity}</span>
-                      <span className="font-medium text-blue-500">{Math.round((cls.enrolled / cls.capacity) * 100)}% full</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                      <div className="h-1.5 bg-blue-400 rounded-full"
-                        style={{ width: `${(cls.enrolled / cls.capacity) * 100}%` }}></div>
-                    </div>
-
-                    {/* Attendance */}
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>Avg Attendance</span>
-                      <span className={`font-bold ${cls.attendance >= 85 ? 'text-green-600' : cls.attendance >= 70 ? 'text-yellow-600' : 'text-red-500'}`}>
-                        {cls.attendance}%
+                    <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
+                      <span>Enrolled: {cls.enrolled || 0}/{cls.capacity || 0}</span>
+                      <span className="font-medium text-blue-500">
+                        {cls.capacity ? Math.round(((cls.enrolled || 0) / cls.capacity) * 100) : 0}% full
                       </span>
                     </div>
                     <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                      <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance)}`}
-                        style={{ width: `${cls.attendance}%` }}></div>
+                      <div className="h-1.5 bg-blue-400 rounded-full transition-all"
+                        style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}></div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>Avg Attendance</span>
+                      <span className={`font-bold ${(cls.attendance || 0) >= 85 ? 'text-green-600' : (cls.attendance || 0) >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                        {cls.attendance || 0}%
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                      <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
+                        style={{ width: `${cls.attendance || 0}%` }}></div>
                     </div>
                   </div>
 
-                  {/* Card Footer */}
                   <div className="flex border-t border-gray-100">
-                    <button
-                      onClick={() => { setEditData(cls); setModalOpen(true); }}
+                    <button onClick={() => { setEditData(cls); setModalOpen(true); }}
                       className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-blue-500 hover:bg-blue-50 transition-all font-medium">
-                      <MdEdit className="w-4 h-4"/>
-                      Edit
+                      <MdEdit className="w-4 h-4"/> Edit
                     </button>
-                    <div className="w-px bg-gray-100"></div>
-                    <button
-                      onClick={() => setDeleteId(cls.id)}
+                    <div className="w-px bg-gray-100"/>
+                    <button onClick={() => setDeleteId(cls.id)}
                       className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-red-400 hover:bg-red-50 transition-all font-medium">
-                      <MdDelete className="w-4 h-4"/>
-                      Delete
+                      <MdDelete className="w-4 h-4"/> Delete
                     </button>
                   </div>
                 </div>
               ))}
 
-              {/* Empty State */}
               {filtered.length === 0 && (
                 <div className="col-span-3 bg-white rounded-xl border border-gray-100 p-16 text-center">
                   <MdClass className="w-16 h-16 text-gray-200 mx-auto mb-4"/>
                   <p className="text-gray-400 font-medium">No classes found</p>
-                  <p className="text-gray-300 text-sm mt-1">Try adjusting your search or filter</p>
+                  <p className="text-gray-300 text-sm mt-1">
+                    {classes.length === 0 ? 'Add your first class!' : 'Try adjusting your search'}
+                  </p>
+                  {classes.length === 0 && (
+                    <button onClick={() => setModalOpen(true)}
+                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-xl mx-auto hover:bg-blue-600 transition-all">
+                      <MdAdd className="w-4 h-4"/> Add First Class
+                    </button>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           {/* TABLE VIEW */}
-          {view === 'table' && (
+          {!loading && view === 'table' && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <table className="w-full">
                 <thead>
@@ -438,19 +489,19 @@ export default function Classes() {
                           <span className="text-sm font-medium text-gray-800">{cls.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{cls.code}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500 font-mono">{cls.code}</td>
                       <td className="px-4 py-3 text-sm text-gray-600">{cls.teacher}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{cls.schedule}</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{cls.room}</td>
-                      <td className="px-4 py-3 text-xs text-gray-600">{cls.enrolled}/{cls.capacity}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{cls.schedule || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{cls.room || '—'}</td>
+                      <td className="px-4 py-3 text-xs text-gray-600">{cls.enrolled || 0}/{cls.capacity || 0}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full w-16">
-                            <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance)}`}
-                              style={{ width: `${cls.attendance}%` }}></div>
+                          <div className="w-16 h-1.5 bg-gray-100 rounded-full">
+                            <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
+                              style={{ width: `${cls.attendance || 0}%` }}></div>
                           </div>
-                          <span className={`text-xs font-medium ${cls.attendance >= 85 ? 'text-green-600' : cls.attendance >= 70 ? 'text-yellow-600' : 'text-red-500'}`}>
-                            {cls.attendance}%
+                          <span className={`text-xs font-medium ${(cls.attendance || 0) >= 85 ? 'text-green-600' : (cls.attendance || 0) >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                            {cls.attendance || 0}%
                           </span>
                         </div>
                       </td>
@@ -461,13 +512,11 @@ export default function Classes() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => { setEditData(cls); setModalOpen(true); }}
+                          <button onClick={() => { setEditData(cls); setModalOpen(true); }}
                             className="p-1.5 text-blue-400 hover:bg-blue-50 rounded-lg transition-all">
                             <MdEdit className="w-4 h-4"/>
                           </button>
-                          <button
-                            onClick={() => setDeleteId(cls.id)}
+                          <button onClick={() => setDeleteId(cls.id)}
                             className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
                             <MdDelete className="w-4 h-4"/>
                           </button>
@@ -477,7 +526,6 @@ export default function Classes() {
                   ))}
                 </tbody>
               </table>
-
               {filtered.length === 0 && (
                 <div className="text-center py-16">
                   <MdClass className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
@@ -489,7 +537,7 @@ export default function Classes() {
         </div>
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Modals */}
       <ClassModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditData(null); }}
@@ -497,7 +545,6 @@ export default function Classes() {
         editData={editData}
       />
 
-      {/* Delete Confirm Modal */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
@@ -506,19 +553,27 @@ export default function Classes() {
             </div>
             <h3 className="text-gray-800 font-semibold text-lg mb-2">Delete Class?</h3>
             <p className="text-gray-400 text-sm mb-6">
-              This action cannot be undone. All related attendance data will be removed.
+              This action cannot be undone.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)}
-                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 transition-all">
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm hover:bg-gray-50">
                 Cancel
               </button>
               <button onClick={() => handleDelete(deleteId)}
-                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-xl transition-all">
+                className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white text-sm rounded-xl">
                 Delete
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50
+          ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
+          {toast.type === 'error' ? <MdClose className="w-4 h-4"/> : <MdCheck className="w-4 h-4 text-green-400"/>}
+          {toast.msg}
         </div>
       )}
     </div>

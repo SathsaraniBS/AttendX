@@ -15,9 +15,12 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'attendx_secret')
 
 db = SQLAlchemy(app)
 
-# Routes register කරන්න
+# Routes
 from app.routes.auth import auth_bp
+from app.routes.classes import classes_bp
+
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
+app.register_blueprint(classes_bp, url_prefix='/api/classes')
 
 @app.route('/api/health')
 def health():
