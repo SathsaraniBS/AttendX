@@ -15,6 +15,10 @@ import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import Backup from './pages/Backup';
 import Logs from './pages/Logs';
+
+import StudentDashboard from './pages/student/StudentDashboard';
+import StudentLogin from './pages/student/StudentLogin';
+
 import './index.css';
 
 function App() {
@@ -37,7 +41,10 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/backup" element={<Backup />} />
         <Route path="/logs" element={<Logs />} />
-        
+
+        <Route path="/student-login" element={<StudentLogin />} />
+        <Route path="/student-dashboard" element={<StudentDashboard />} />
+
       </Routes>
     </Router>
   );
