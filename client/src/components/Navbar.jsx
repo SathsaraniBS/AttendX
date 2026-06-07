@@ -13,6 +13,8 @@ function Navbar() {
     '/notifications',
     '/backup',
     '/logs',
+    '/student-login',       
+    '/student-dashboard',   
   ];
 
   const isHidden =

@@ -16,8 +16,8 @@ import Notifications from './pages/Notifications';
 import Backup from './pages/Backup';
 import Logs from './pages/Logs';
 
-import StudentDashboard from './pages/student/StudentDashboard';
-import StudentLogin from './pages/student/StudentLogin';
+import StudentDashboard from './pages/students/StudentDashboard';
+import StudentLogin from './pages/students/StudentLogin';
 
 import './index.css';
 
