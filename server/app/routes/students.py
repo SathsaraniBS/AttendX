@@ -1,48 +1,46 @@
-from flask import Blueprint, jsonify, request
-from app import db
-from app.models.student import Student
+from flask import Blueprint, request, jsonify
+from datetime import datetime
 
 students_bp = Blueprint('students', __name__)
 
-# GET all students
+students_store = []
+
 @students_bp.route('/', methods=['GET'])
 def get_students():
-    students = Student.query.all()
-    return jsonify([s.to_dict() for s in students])
+    return jsonify(students_store), 200
 
-# POST add student
 @students_bp.route('/add', methods=['POST'])
 def add_student():
-    data = request.json
-    student = Student(
-        name=data['name'],
-        student_id=data['studentId'],
-        email=data['email'],
-        phone=data.get('phone', ''),
-        class_name=data['className'],
-        status=data.get('status', 'Active'),
-        attendance=0
-    )
-    db.session.add(student)
-    db.session.commit()
-    return jsonify(student.to_dict()), 201
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'No data provided'}), 400
 
-# DELETE student
-@students_bp.route('/<int:id>', methods=['DELETE'])
-def delete_student(id):
-    student = Student.query.get_or_404(id)
-    db.session.delete(student)
-    db.session.commit()
-    return jsonify({'message': 'Deleted'})
+    new_student = {
+        'id': len(students_store) + 1,
+        'name': data.get('name', ''),
+        'studentId': data.get('studentId', ''),
+        'email': data.get('email', ''),
+        'phone': data.get('phone', ''),
+        'className': data.get('className', ''),
+        'status': data.get('status', 'Active'),
+        'attendance': 0,
+        'joinDate': datetime.now().strftime('%Y-%m-%d'),
+        'photo': None
+    }
+    students_store.append(new_student)
+    return jsonify(new_student), 201
 
-# PUT update student
-@students_bp.route('/<int:id>', methods=['PUT'])
-def update_student(id):
-    student = Student.query.get_or_404(id)
-    data = request.json
-    student.name = data.get('name', student.name)
-    student.phone = data.get('phone', student.phone)
-    student.class_name = data.get('className', student.class_name)
-    student.status = data.get('status', student.status)
-    db.session.commit()
-    return jsonify(student.to_dict())
+@students_bp.route('/<int:student_id>', methods=['PUT'])
+def update_student(student_id):
+    data = request.get_json()
+    for i, s in enumerate(students_store):
+        if s['id'] == student_id:
+            students_store[i] = {**s, **data, 'id': student_id}
+            return jsonify(students_store[i]), 200
+    return jsonify({'message': 'Student not found'}), 404
+
+@students_bp.route('/<int:student_id>', methods=['DELETE'])
+def delete_student(student_id):
+    global students_store
+    students_store = [s for s in students_store if s['id'] != student_id]
+    return jsonify({'message': 'Deleted'}), 200
