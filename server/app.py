@@ -13,17 +13,19 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'attendx_secret')
 
-# ✅ db directly create — circular import නෑ
+# ✅ db directly create
 db = SQLAlchemy(app)
 
 # ✅ Routes register
 from app.routes.auth import auth_bp
 from app.routes.classes import classes_bp
 from app.routes.students import students_bp
+from app.routes.attendance import attendance_bp
 
-app.register_blueprint(auth_bp, url_prefix='/api/auth')
-app.register_blueprint(classes_bp, url_prefix='/api/classes')
-app.register_blueprint(students_bp, url_prefix='/api/students')
+app.register_blueprint(auth_bp,        url_prefix='/api/auth')
+app.register_blueprint(classes_bp,     url_prefix='/api/classes')
+app.register_blueprint(students_bp,    url_prefix='/api/students')
+app.register_blueprint(attendance_bp,  url_prefix='/api/attendance')
 
 @app.route('/api/health')
 def health():
