@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdHistory, MdPerson, MdLogout,
   MdCalendarToday, MdBarChart, MdEmail, MdPhone,
   MdBadge, MdClass, MdEdit, MdCheck, MdClose
 } from 'react-icons/md';
-import { FaUserGraduate } from 'react-icons/fa';
+import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 
 export default function StudentProfile() {
   const navigate = useNavigate();
@@ -60,65 +59,27 @@ export default function StudentProfile() {
   return (
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-screen w-56 bg-[#0f1729] flex flex-col z-50">
-        <div className="px-4 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
-              <FaUserGraduate className="w-4 h-4 text-white"/>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">FRAS</p>
-              <p className="text-gray-400 text-xs">Student Portal</p>
-            </div>
-          </div>
-        </div>
+      {/* ✅ StudentSidebar Component */}
+      <StudentSidebar student={student} onLogout={handleLogout}/>
 
-        <nav className="flex-1 p-3 space-y-1 mt-2">
-          {[
-            { label: 'Dashboard', icon: MdDashboard, path: '/student-dashboard' },
-            { label: 'My Attendance', icon: MdHistory, path: '/student-attendance' },
-            { label: 'My Profile', icon: MdPerson, path: '/student-profile' },
-          ].map(item => {
-            const Icon = item.icon;
-            const active = window.location.pathname === item.path;
-            return (
-              <button key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all
-                  ${active ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-                <Icon className="w-5 h-5 flex-shrink-0"/>
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              {student?.name?.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{student?.name}</p>
-              <p className="text-gray-400 text-xs truncate">{student?.studentId}</p>
-            </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400">
-              <MdLogout className="w-5 h-5"/>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
       <div className="flex-1 ml-56">
+
+        {/* Top Bar */}
         <div className="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center sticky top-0 z-40">
           <h1 className="text-lg font-semibold text-gray-800">My Profile</h1>
-          <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
-            <MdCalendarToday className="w-4 h-4"/>
-            <span>{new Date().toLocaleDateString('en-US', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            })}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+              <MdCalendarToday className="w-4 h-4"/>
+              <span>{new Date().toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+              })}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                {student?.name?.charAt(0)}
+              </div>
+              <span className="text-gray-700 text-sm">{student?.name}</span>
+            </div>
           </div>
         </div>
 
@@ -147,17 +108,16 @@ export default function StudentProfile() {
                   onClick={() => setEditing(!editing)}
                   className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-sm rounded-xl transition-all">
                   <MdEdit className="w-4 h-4"/>
-                  {editing ? 'Cancel' : 'Edit'}
+                  {editing ? 'Cancel' : 'Edit Profile'}
                 </button>
               </div>
             </div>
 
-            {/* Info Card */}
+            {/* Personal Info Card */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-semibold text-gray-800 mb-4">Personal Information</h3>
               <div className="space-y-4">
 
-                {/* Read-only fields */}
                 {[
                   { icon: MdBadge, label: 'Student ID', value: student?.studentId },
                   { icon: MdEmail, label: 'Email Address', value: student?.email },
@@ -178,7 +138,7 @@ export default function StudentProfile() {
                   );
                 })}
 
-                {/* Editable — Phone */}
+                {/* Editable Phone */}
                 <div className="flex items-center gap-4 py-3">
                   <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
                     <MdPhone className="w-4 h-4 text-blue-500"/>
@@ -215,7 +175,10 @@ export default function StudentProfile() {
 
             {/* Attendance Summary */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">Attendance Summary</h3>
+              <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <MdBarChart className="w-5 h-5 text-blue-500"/>
+                Attendance Summary
+              </h3>
               <div className="flex items-center gap-6">
                 <div className="relative w-24 h-24 flex-shrink-0">
                   <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">

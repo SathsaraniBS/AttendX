@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdHistory, MdPerson,
-  MdLogout, MdCalendarToday, MdBarChart,
+  MdCalendarToday, MdBarChart,
   MdCheckCircle, MdCancel, MdAccessTime,
   MdTrendingUp, MdWarning
 } from 'react-icons/md';
-import { FaUserGraduate } from 'react-icons/fa';
+import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
     const token = localStorage.getItem('student_token');
@@ -50,74 +48,33 @@ export default function StudentDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* Sidebar */}
-      <aside className="fixed top-0 left-0 h-screen w-56 bg-[#0f1729] flex flex-col z-50">
-        <div className="px-4 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center">
-              <FaUserGraduate className="w-4 h-4 text-white"/>
-            </div>
-            <div>
-              <p className="text-white font-bold text-sm">FRAS</p>
-              <p className="text-gray-400 text-xs">Student Portal</p>
-            </div>
-          </div>
-        </div>
+      {/* ✅ StudentSidebar Component */}
+      <StudentSidebar student={student} onLogout={handleLogout}/>
 
-        <nav className="flex-1 p-3 space-y-1 mt-2">
-          {[
-            { key: 'dashboard', icon: MdDashboard, label: 'Dashboard' },
-            { key: 'attendance', icon: MdHistory, label: 'My Attendance',
-              onClick: () => navigate('/student-attendance') },
-            { key: 'profile', icon: MdPerson, label: 'My Profile',
-              onClick: () => navigate('/student-profile') },
-          ].map(item => {
-            const Icon = item.icon;
-            return (
-              <button key={item.key}
-                onClick={item.onClick || (() => setActiveTab(item.key))}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-all
-                  ${activeTab === item.key
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-                <Icon className="w-5 h-5 flex-shrink-0"/>
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="border-t border-white/10 p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-              {student?.name?.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{student?.name}</p>
-              <p className="text-gray-400 text-xs truncate">{student?.studentId}</p>
-            </div>
-            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400">
-              <MdLogout className="w-5 h-5"/>
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main */}
       <div className="flex-1 ml-56">
+
+        {/* Top Bar */}
         <div className="bg-white border-b border-gray-200 px-6 py-3.5 flex justify-between items-center sticky top-0 z-40">
           <h1 className="text-lg font-semibold text-gray-800">Student Dashboard</h1>
-          <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
-            <MdCalendarToday className="w-4 h-4"/>
-            <span>{new Date().toLocaleDateString('en-US', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-            })}</span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
+              <MdCalendarToday className="w-4 h-4"/>
+              <span>{new Date().toLocaleDateString('en-US', {
+                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+              })}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                {student?.name?.charAt(0)}
+              </div>
+              <span className="text-gray-700 text-sm">{student?.name}</span>
+            </div>
           </div>
         </div>
 
         <div className="p-6 space-y-6">
 
-          {/* Welcome */}
+          {/* Welcome Card */}
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl font-bold">
@@ -152,7 +109,7 @@ export default function StudentDashboard() {
             })}
           </div>
 
-          {/* Attendance Circle */}
+          {/* Attendance Overview */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
             <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
               <MdTrendingUp className="w-5 h-5 text-blue-500"/>
