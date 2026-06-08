@@ -1,5 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+
+// Admin Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
@@ -12,7 +14,12 @@ import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 import Backup from './pages/Backup';
 import Logs from './pages/Logs';
+
+// ✅ Student Pages
 import StudentDashboard from './pages/students/StudentDashboard';
+import StudentAttendance from './pages/students/StudentAttendance';
+import StudentProfile from './pages/students/StudentProfile';
+
 import './index.css';
 
 function App() {
@@ -20,6 +27,8 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
+
+        {/* ===== ADMIN ROUTES ===== */}
         <Route path="/" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
@@ -33,7 +42,12 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/backup" element={<Backup />} />
         <Route path="/logs" element={<Logs />} />
+
+        {/* ===== STUDENT ROUTES ===== */}
         <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/student-attendance" element={<StudentAttendance />} />
+        <Route path="/student-profile" element={<StudentProfile />} />
+
       </Routes>
     </Router>
   );
