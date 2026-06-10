@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   MdCalendarToday, MdBarChart, MdEmail, MdPhone,
-  MdBadge, MdClass, MdEdit, MdCheck, MdClose
+  MdBadge, MdClass, MdEdit, MdCheck, MdClose,
+  MdCheckCircle, MdCancel, MdAccessTime
 } from 'react-icons/md';
 import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 
@@ -12,6 +14,14 @@ export default function StudentProfile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({});
   const [toast, setToast] = useState(null);
+  const [attendanceStats, setAttendanceStats] = useState({
+    total: 0,
+    present: 0,
+    absent: 0,
+    late: 0,
+    rate: 0
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('student_token');
@@ -22,9 +32,34 @@ export default function StudentProfile() {
         const parsed = JSON.parse(userData);
         setStudent(parsed);
         setForm(parsed);
+        fetchAttendanceStats(parsed.id, token);
       }
     } catch { navigate('/'); }
   }, [navigate]);
+
+  const fetchAttendanceStats = async (studentId, token) => {
+    setLoadingStats(true);
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/attendance/student/${studentId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }
+      );
+      const records = res.data || [];
+      const total   = records.length;
+      const present = records.filter(r => r.status === 'Present').length;
+      const absent  = records.filter(r => r.status === 'Absent').length;
+      const late    = records.filter(r => r.status === 'Late').length;
+      const rate    = total > 0 ? Math.round((present / total) * 100) : 0;
+      setAttendanceStats({ total, present, absent, late, rate });
+    } catch {
+      setAttendanceStats({ total: 0, present: 0, absent: 0, late: 0, rate: 0 });
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('student_token');
@@ -45,7 +80,7 @@ export default function StudentProfile() {
     showToast('Profile updated successfully!');
   };
 
-  const attendanceRate = student?.attendance || 0;
+  const attendanceRate = attendanceStats.rate || student?.attendance || 0;
   const attendanceColor = attendanceRate >= 85
     ? 'text-green-500' : attendanceRate >= 75
     ? 'text-yellow-500' : 'text-red-500';
@@ -59,7 +94,6 @@ export default function StudentProfile() {
   return (
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* ✅ StudentSidebar Component */}
       <StudentSidebar student={student} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
@@ -113,16 +147,16 @@ export default function StudentProfile() {
               </div>
             </div>
 
-            {/* Personal Info Card */}
+            {/* Personal Info */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-semibold text-gray-800 mb-4">Personal Information</h3>
               <div className="space-y-4">
 
                 {[
-                  { icon: MdBadge, label: 'Student ID', value: student?.studentId },
-                  { icon: MdEmail, label: 'Email Address', value: student?.email },
-                  { icon: MdClass, label: 'Class', value: student?.className },
-                  { icon: MdCalendarToday, label: 'Join Date', value: student?.joinDate || '—' },
+                  { icon: MdBadge,        label: 'Student ID',    value: student?.studentId },
+                  { icon: MdEmail,        label: 'Email Address', value: student?.email },
+                  { icon: MdClass,        label: 'Class',         value: student?.className },
+                  { icon: MdCalendarToday, label: 'Join Date',    value: student?.joinDate || '—' },
                 ].map((item, i) => {
                   const Icon = item.icon;
                   return (
@@ -173,41 +207,89 @@ export default function StudentProfile() {
               </div>
             </div>
 
-            {/* Attendance Summary */}
+            {/* ✅ Attendance Summary — API Data */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <MdBarChart className="w-5 h-5 text-blue-500"/>
                 Attendance Summary
               </h3>
-              <div className="flex items-center gap-6">
-                <div className="relative w-24 h-24 flex-shrink-0">
-                  <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none" stroke="#e5e7eb" strokeWidth="3"/>
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke={attendanceRate >= 85 ? '#22c55e' : attendanceRate >= 75 ? '#eab308' : '#ef4444'}
-                      strokeWidth="3"
-                      strokeDasharray={`${attendanceRate}, 100`}/>
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className={`text-lg font-bold ${attendanceColor}`}>{attendanceRate}%</span>
+
+              {loadingStats ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"/>
+                </div>
+              ) : (
+                <div className="flex items-center gap-6">
+
+                  {/* Circle */}
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <svg viewBox="0 0 36 36" className="w-24 h-24 -rotate-90">
+                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none" stroke="#e5e7eb" strokeWidth="3"/>
+                      <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke={attendanceRate >= 85 ? '#22c55e' : attendanceRate >= 75 ? '#eab308' : '#ef4444'}
+                        strokeWidth="3"
+                        strokeDasharray={`${attendanceRate}, 100`}/>
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className={`text-lg font-bold ${attendanceColor}`}>{attendanceRate}%</span>
+                    </div>
+                  </div>
+
+                  {/* ✅ Real Stats Grid */}
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    {[
+                      {
+                        label: 'Total Classes',
+                        value: attendanceStats.total,
+                        color: 'text-blue-600',
+                        bg: 'bg-blue-50',
+                        icon: MdCalendarToday
+                      },
+                      {
+                        label: 'Present',
+                        value: attendanceStats.present,
+                        color: 'text-green-600',
+                        bg: 'bg-green-50',
+                        icon: MdCheckCircle
+                      },
+                      {
+                        label: 'Absent',
+                        value: attendanceStats.absent,
+                        color: 'text-red-500',
+                        bg: 'bg-red-50',
+                        icon: MdCancel
+                      },
+                      {
+                        label: 'Late',
+                        value: attendanceStats.late,
+                        color: 'text-yellow-600',
+                        bg: 'bg-yellow-50',
+                        icon: MdAccessTime
+                      },
+                    ].map((item, i) => {
+                      const Icon = item.icon;
+                      return (
+                        <div key={i} className={`${item.bg} rounded-xl p-3`}>
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <Icon className={`w-3.5 h-3.5 ${item.color}`}/>
+                            <p className="text-xs text-gray-500">{item.label}</p>
+                          </div>
+                          <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <div className="flex-1 grid grid-cols-2 gap-3">
-                  {[
-                    { label: 'Total Classes', value: 50, color: 'text-blue-600', bg: 'bg-blue-50' },
-                    { label: 'Present', value: Math.round(attendanceRate * 0.5), color: 'text-green-600', bg: 'bg-green-50' },
-                    { label: 'Absent', value: Math.round((100 - attendanceRate) * 0.3), color: 'text-red-500', bg: 'bg-red-50' },
-                    { label: 'Late', value: 3, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-                  ].map((item, i) => (
-                    <div key={i} className={`${item.bg} rounded-xl p-3`}>
-                      <p className="text-xs text-gray-500">{item.label}</p>
-                      <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
-                    </div>
-                  ))}
+              )}
+
+              {/* ✅ No data state */}
+              {!loadingStats && attendanceStats.total === 0 && (
+                <div className="text-center py-4 mt-4 border-t border-gray-50">
+                  <p className="text-gray-400 text-sm">No attendance records yet</p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

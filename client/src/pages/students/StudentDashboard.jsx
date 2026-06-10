@@ -13,6 +13,9 @@ export default function StudentDashboard() {
   const [student, setStudent] = useState(null);
   const [recentRecords, setRecentRecords] = useState([]);
   const [loadingRecords, setLoadingRecords] = useState(true);
+  const [attendanceStats, setAttendanceStats] = useState({
+    total: 0, present: 0, absent: 0, late: 0, rate: 0
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('student_token');
@@ -22,12 +25,12 @@ export default function StudentDashboard() {
       if (userData) {
         const parsed = JSON.parse(userData);
         setStudent(parsed);
-        fetchRecentAttendance(parsed.id, token);
+        fetchAttendance(parsed.id, token);
       }
     } catch { navigate('/'); }
   }, [navigate]);
 
-  const fetchRecentAttendance = async (studentId, token) => {
+  const fetchAttendance = async (studentId, token) => {
     setLoadingRecords(true);
     try {
       const res = await axios.get(
@@ -37,8 +40,17 @@ export default function StudentDashboard() {
           timeout: 5000
         }
       );
-      setRecentRecords(res.data?.slice(0, 5) || []);
+      const all     = res.data || [];
+      const total   = all.length;
+      const present = all.filter(r => r.status === 'Present').length;
+      const absent  = all.filter(r => r.status === 'Absent').length;
+      const late    = all.filter(r => r.status === 'Late').length;
+      const rate    = total > 0 ? Math.round((present / total) * 100) : 0;
+
+      setAttendanceStats({ total, present, absent, late, rate });
+      setRecentRecords(all.slice(0, 5));
     } catch {
+      setAttendanceStats({ total: 0, present: 0, absent: 0, late: 0, rate: 0 });
       setRecentRecords([]);
     } finally {
       setLoadingRecords(false);
@@ -51,15 +63,10 @@ export default function StudentDashboard() {
     navigate('/');
   };
 
-  const attendanceRate = student?.attendance || 0;
+  const attendanceRate = attendanceStats.rate || student?.attendance || 0;
   const attendanceColor = attendanceRate >= 85
     ? 'text-green-500' : attendanceRate >= 75
     ? 'text-yellow-500' : 'text-red-500';
-
-  // ✅ Real stats from API records
-  const presentCount = recentRecords.filter(r => r.status === 'Present').length;
-  const absentCount  = recentRecords.filter(r => r.status === 'Absent').length;
-  const lateCount    = recentRecords.filter(r => r.status === 'Late').length;
 
   if (!student) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -109,13 +116,37 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* ✅ Stats — API Real Data */}
           <div className="grid grid-cols-4 gap-4">
             {[
-              { label: 'Attendance Rate', value: `${attendanceRate}%`, icon: MdBarChart, color: attendanceColor, bg: 'bg-blue-50' },
-              { label: 'Present Days', value: presentCount, icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Absent Days', value: absentCount, icon: MdCancel, color: 'text-red-500', bg: 'bg-red-50' },
-              { label: 'Late Arrivals', value: lateCount, icon: MdAccessTime, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+              {
+                label: 'Attendance Rate',
+                value: `${attendanceRate}%`,
+                icon: MdBarChart,
+                color: attendanceColor,
+                bg: 'bg-blue-50'
+              },
+              {
+                label: 'Present Days',
+                value: attendanceStats.present,
+                icon: MdCheckCircle,
+                color: 'text-green-600',
+                bg: 'bg-green-50'
+              },
+              {
+                label: 'Absent Days',
+                value: attendanceStats.absent,
+                icon: MdCancel,
+                color: 'text-red-500',
+                bg: 'bg-red-50'
+              },
+              {
+                label: 'Late Arrivals',
+                value: attendanceStats.late,
+                icon: MdAccessTime,
+                color: 'text-yellow-600',
+                bg: 'bg-yellow-50'
+              },
             ].map((s, i) => {
               const Icon = s.icon;
               return (
@@ -137,6 +168,8 @@ export default function StudentDashboard() {
               Attendance Overview
             </h3>
             <div className="flex items-center gap-6">
+
+              {/* Circle Chart */}
               <div className="relative w-32 h-32 flex-shrink-0">
                 <svg viewBox="0 0 36 36" className="w-32 h-32 -rotate-90">
                   <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -151,8 +184,11 @@ export default function StudentDashboard() {
                   <span className={`text-2xl font-bold ${attendanceColor}`}>{attendanceRate}%</span>
                 </div>
               </div>
+
               <div className="flex-1 space-y-3">
-                {attendanceRate < 75 && (
+
+                {/* Warnings */}
+                {attendanceRate < 75 && attendanceStats.total > 0 && (
                   <div className="flex items-start gap-2 p-3 bg-red-50 rounded-xl border border-red-100">
                     <MdWarning className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"/>
                     <div>
@@ -163,12 +199,14 @@ export default function StudentDashboard() {
                     </div>
                   </div>
                 )}
-                {attendanceRate >= 85 && (
+                {attendanceRate >= 85 && attendanceStats.total > 0 && (
                   <div className="flex items-start gap-2 p-3 bg-green-50 rounded-xl border border-green-100">
                     <MdCheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"/>
                     <p className="text-sm font-medium text-green-700">Excellent attendance! Keep it up!</p>
                   </div>
                 )}
+
+                {/* ✅ Real Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-xl p-3">
                     <p className="text-gray-400 text-xs">Student ID</p>
@@ -177,6 +215,14 @@ export default function StudentDashboard() {
                   <div className="bg-gray-50 rounded-xl p-3">
                     <p className="text-gray-400 text-xs">Class</p>
                     <p className="font-medium text-gray-700 text-sm">{student?.className}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-3">
+                    <p className="text-gray-400 text-xs">Total Classes</p>
+                    <p className="font-bold text-blue-600 text-sm">{attendanceStats.total}</p>
+                  </div>
+                  <div className="bg-green-50 rounded-xl p-3">
+                    <p className="text-gray-400 text-xs">Present</p>
+                    <p className="font-bold text-green-600 text-sm">{attendanceStats.present}</p>
                   </div>
                 </div>
               </div>
@@ -238,8 +284,6 @@ export default function StudentDashboard() {
                 </tbody>
               </table>
             ) : (
-
-              /* ✅ Empty State */
               <div className="text-center py-12">
                 <MdCalendarToday className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
                 <p className="text-gray-400 font-medium">No attendance records yet</p>
