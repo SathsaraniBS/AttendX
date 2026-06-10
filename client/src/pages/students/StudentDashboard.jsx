@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   MdCalendarToday, MdBarChart,
   MdCheckCircle, MdCancel, MdAccessTime,
@@ -10,15 +11,39 @@ import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const [student, setStudent] = useState(null);
+  const [recentRecords, setRecentRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem('student_token');
     const userData = localStorage.getItem('student_user');
     if (!token) { navigate('/'); return; }
     try {
-      if (userData) setStudent(JSON.parse(userData));
+      if (userData) {
+        const parsed = JSON.parse(userData);
+        setStudent(parsed);
+        fetchRecentAttendance(parsed.id, token);
+      }
     } catch { navigate('/'); }
   }, [navigate]);
+
+  const fetchRecentAttendance = async (studentId, token) => {
+    setLoadingRecords(true);
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/attendance/student/${studentId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000
+        }
+      );
+      setRecentRecords(res.data?.slice(0, 5) || []);
+    } catch {
+      setRecentRecords([]);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('student_token');
@@ -31,13 +56,10 @@ export default function StudentDashboard() {
     ? 'text-green-500' : attendanceRate >= 75
     ? 'text-yellow-500' : 'text-red-500';
 
-  const sampleRecords = [
-    { date: '2026-06-07', status: 'Present', time: '08:05 AM' },
-    { date: '2026-06-06', status: 'Present', time: '08:02 AM' },
-    { date: '2026-06-05', status: 'Absent', time: '—' },
-    { date: '2026-06-04', status: 'Present', time: '08:10 AM' },
-    { date: '2026-06-03', status: 'Late', time: '08:22 AM' },
-  ];
+  // ✅ Real stats from API records
+  const presentCount = recentRecords.filter(r => r.status === 'Present').length;
+  const absentCount  = recentRecords.filter(r => r.status === 'Absent').length;
+  const lateCount    = recentRecords.filter(r => r.status === 'Late').length;
 
   if (!student) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -48,7 +70,6 @@ export default function StudentDashboard() {
   return (
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* ✅ StudentSidebar Component */}
       <StudentSidebar student={student} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
@@ -92,9 +113,9 @@ export default function StudentDashboard() {
           <div className="grid grid-cols-4 gap-4">
             {[
               { label: 'Attendance Rate', value: `${attendanceRate}%`, icon: MdBarChart, color: attendanceColor, bg: 'bg-blue-50' },
-              { label: 'Present Days', value: Math.round(attendanceRate * 0.5), icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Absent Days', value: Math.round((100 - attendanceRate) * 0.3), icon: MdCancel, color: 'text-red-500', bg: 'bg-red-50' },
-              { label: 'Late Arrivals', value: 3, icon: MdAccessTime, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+              { label: 'Present Days', value: presentCount, icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+              { label: 'Absent Days', value: absentCount, icon: MdCancel, color: 'text-red-500', bg: 'bg-red-50' },
+              { label: 'Late Arrivals', value: lateCount, icon: MdAccessTime, color: 'text-yellow-600', bg: 'bg-yellow-50' },
             ].map((s, i) => {
               const Icon = s.icon;
               return (
@@ -162,7 +183,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Recent Attendance */}
+          {/* ✅ Recent Attendance — API Data */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
               <h3 className="font-semibold text-gray-800">Recent Attendance</h3>
@@ -172,36 +193,61 @@ export default function StudentDashboard() {
                 View All →
               </button>
             </div>
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-100">
-                  {['Date', 'Status', 'Check-in Time', 'Class'].map(h => (
-                    <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sampleRecords.map((rec, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
-                    <td className="px-5 py-3 text-sm text-gray-600">{rec.date}</td>
-                    <td className="px-5 py-3">
-                      <span className={`text-xs px-2.5 py-1 rounded-full border font-medium
-                        ${rec.status === 'Present' ? 'bg-green-50 text-green-600 border-green-100'
-                          : rec.status === 'Late' ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
-                          : 'bg-red-50 text-red-500 border-red-100'}`}>
-                        {rec.status}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-sm text-gray-500">{rec.time}</td>
-                    <td className="px-5 py-3">
-                      <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
-                        {student?.className}
-                      </span>
-                    </td>
+
+            {/* Loading */}
+            {loadingRecords ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"/>
+              </div>
+            ) : recentRecords.length > 0 ? (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    {['Date', 'Day', 'Status', 'Check-in Time', 'Class'].map(h => (
+                      <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-gray-500">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentRecords.map((rec, i) => (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
+                      <td className="px-5 py-3 text-sm text-gray-600">{rec.date}</td>
+                      <td className="px-5 py-3 text-sm text-gray-500">{rec.day || '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium
+                          ${rec.status === 'Present'
+                            ? 'bg-green-50 text-green-600 border-green-100'
+                            : rec.status === 'Late'
+                            ? 'bg-yellow-50 text-yellow-600 border-yellow-100'
+                            : 'bg-red-50 text-red-500 border-red-100'}`}>
+                          {rec.status === 'Present'
+                            ? <><MdCheckCircle className="w-3 h-3"/> Present</>
+                            : rec.status === 'Late'
+                            ? <><MdAccessTime className="w-3 h-3"/> Late</>
+                            : <><MdCancel className="w-3 h-3"/> Absent</>}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-sm text-gray-500">{rec.time || '—'}</td>
+                      <td className="px-5 py-3">
+                        <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
+                          {student?.className}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+
+              /* ✅ Empty State */
+              <div className="text-center py-12">
+                <MdCalendarToday className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
+                <p className="text-gray-400 font-medium">No attendance records yet</p>
+                <p className="text-gray-300 text-sm mt-1">
+                  Attendance will appear here after classes
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
