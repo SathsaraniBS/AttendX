@@ -19,6 +19,7 @@ import Logs from './pages/Logs';
 import StudentDashboard from './pages/students/StudentDashboard';
 import StudentAttendance from './pages/students/StudentAttendance';
 import StudentProfile from './pages/students/StudentProfile';
+import StudentMarkAttendance from './pages/students/StudentMarkAttendance';
 
 import './index.css';
 
@@ -47,7 +48,7 @@ function App() {
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/student-attendance" element={<StudentAttendance />} />
         <Route path="/student-profile" element={<StudentProfile />} />
-
+        <Route path="/student-mark-attendance" element={<StudentMarkAttendance />} />
       </Routes>
     </Router>
   );

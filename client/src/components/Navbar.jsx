@@ -18,6 +18,7 @@ function Navbar() {
     '/student-dashboard',
     '/student-attendance',
     '/student-profile',
+    '/student-mark-attendance',
   ];
 
   const isHidden =

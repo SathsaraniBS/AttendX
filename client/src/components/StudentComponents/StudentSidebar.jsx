@@ -1,13 +1,15 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  MdDashboard, MdHistory, MdPerson, MdLogout
+  MdDashboard, MdHistory, MdPerson,
+  MdLogout, MdCameraAlt
 } from 'react-icons/md';
 import { FaUserGraduate } from 'react-icons/fa';
 
 const navItems = [
-  { label: 'Dashboard', icon: MdDashboard, path: '/student-dashboard' },
-  { label: 'My Attendance', icon: MdHistory, path: '/student-attendance' },
-  { label: 'My Profile', icon: MdPerson, path: '/student-profile' },
+  { label: 'Dashboard',        icon: MdDashboard,  path: '/student-dashboard' },
+  { label: 'Mark Attendance',  icon: MdCameraAlt,  path: '/student-mark-attendance' },
+  { label: 'My Attendance',    icon: MdHistory,    path: '/student-attendance' },
+  { label: 'My Profile',       icon: MdPerson,     path: '/student-profile' },
 ];
 
 export default function StudentSidebar({ student, onLogout }) {
