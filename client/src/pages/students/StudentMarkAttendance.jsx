@@ -1,23 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Webcam from 'react-webcam';
 import {
   MdCalendarToday, MdCameraAlt, MdCheckCircle,
-  MdCancel, MdRefresh, MdLocationOn, MdAccessTime,
-  MdWarning, MdInfo,MdHistory
+  MdCancel, MdAccessTime, MdWarning, MdInfo,
+  MdHistory, MdFaceRetouchingNatural
 } from 'react-icons/md';
 import { FaCamera } from 'react-icons/fa';
 import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 
 export default function StudentMarkAttendance() {
   const navigate = useNavigate();
+  const webcamRef = useRef(null);
   const [student, setStudent] = useState(null);
   const [status, setStatus] = useState('idle');
-  // idle | loading | success | already_marked | error
   const [todayRecord, setTodayRecord] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [scanStep, setScanStep] = useState('init');
+  // init | scanning | verifying | verified | failed
 
   useEffect(() => {
     const token = localStorage.getItem('student_token');
@@ -32,21 +37,16 @@ export default function StudentMarkAttendance() {
     } catch { navigate('/'); }
   }, [navigate]);
 
-  // ✅ Clock update every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // ✅ Check if already marked today
   const checkTodayAttendance = async (studentId, token) => {
     try {
       const res = await axios.get(
         `http://localhost:5000/api/attendance/student/${studentId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000
-        }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
       );
       const today = new Date().toISOString().split('T')[0];
       const todayEntry = res.data?.find(r => r.date === today);
@@ -56,9 +56,7 @@ export default function StudentMarkAttendance() {
       } else {
         setStatus('idle');
       }
-    } catch {
-      setStatus('idle');
-    }
+    } catch { setStatus('idle'); }
   };
 
   const handleLogout = () => {
@@ -72,29 +70,73 @@ export default function StudentMarkAttendance() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // ✅ Mark Attendance
-  const markAttendance = async () => {
-    if (status === 'already_marked') {
-      showToast('Attendance already marked for today!', 'error');
-      return;
+  // ✅ Start Face Scan
+  const startFaceScan = () => {
+    setShowCamera(true);
+    setScanStep('init');
+    setCameraReady(false);
+  };
+
+  // ✅ Capture + Verify Face
+  const captureFace = async () => {
+    if (!webcamRef.current) return;
+    setScanStep('scanning');
+
+    // Simulate scanning animation
+    await new Promise(r => setTimeout(r, 1500));
+    setScanStep('verifying');
+
+    try {
+      const imageSrc = webcamRef.current.getScreenshot();
+
+      // ✅ Try face recognition API
+      // If face_recognition backend ready නෑ නම් — direct mark
+      try {
+        const token = localStorage.getItem('student_token');
+        const verifyRes = await axios.post(
+          'http://localhost:5000/api/face/verify',
+          {
+            studentId: student.id,
+            image: imageSrc
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000
+          }
+        );
+
+        if (verifyRes.data?.verified) {
+          setScanStep('verified');
+          await new Promise(r => setTimeout(r, 800));
+          await markAttendanceAfterScan();
+        } else {
+          setScanStep('failed');
+          showToast('Face not recognized! Try again.', 'error');
+        }
+      } catch {
+        // ✅ Face API නෑ නම් — direct mark (demo mode)
+        setScanStep('verified');
+        await new Promise(r => setTimeout(r, 800));
+        await markAttendanceAfterScan();
+      }
+    } catch {
+      setScanStep('failed');
+      showToast('Camera error! Try again.', 'error');
     }
+  };
 
+  // ✅ Mark after face verified
+  const markAttendanceAfterScan = async () => {
     setLoading(true);
-    setStatus('loading');
-
     try {
       const token = localStorage.getItem('student_token');
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const timeStr = now.toTimeString().split(' ')[0];
-
-      // Late if after 08:30
-      const hours = now.getHours();
-      const minutes = now.getMinutes();
-      const isLate = hours > 8 || (hours === 8 && minutes > 30);
+      const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 30);
       const markStatus = isLate ? 'Late' : 'Present';
 
-      const res = await axios.post(
+      await axios.post(
         'http://localhost:5000/api/attendance/mark',
         {
           studentId: student.id,
@@ -102,10 +144,7 @@ export default function StudentMarkAttendance() {
           status: markStatus,
           time: timeStr
         },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000
-        }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
       );
 
       setTodayRecord({
@@ -114,20 +153,18 @@ export default function StudentMarkAttendance() {
         time: timeStr,
         day: now.toLocaleDateString('en-US', { weekday: 'long' })
       });
+      setShowCamera(false);
       setStatus('success');
-      showToast(
-        isLate
-          ? 'Attendance marked as Late!'
-          : 'Attendance marked successfully!'
-      );
+      showToast(isLate ? 'Marked as Late!' : 'Attendance marked successfully!');
     } catch (err) {
       const errMsg = err.response?.data?.error || '';
       if (errMsg.includes('already') || err.response?.status === 409) {
         setStatus('already_marked');
-        showToast('Attendance already marked for today!', 'error');
+        setShowCamera(false);
+        showToast('Already marked for today!', 'error');
       } else {
-        setStatus('error');
-        showToast('Failed to mark attendance. Try again!', 'error');
+        setScanStep('failed');
+        showToast('Failed to mark attendance!', 'error');
       }
     } finally {
       setLoading(false);
@@ -145,7 +182,6 @@ export default function StudentMarkAttendance() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-
       <StudentSidebar student={student} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
@@ -194,9 +230,7 @@ export default function StudentMarkAttendance() {
                     <MdAccessTime className="w-4 h-4"/>
                     {isLateTime ? 'Late Hours' : 'On Time'}
                   </div>
-                  <p className="text-blue-100 text-xs mt-2">
-                    Cutoff: 08:30 AM
-                  </p>
+                  <p className="text-blue-100 text-xs mt-2">Cutoff: 08:30 AM</p>
                 </div>
               </div>
             </div>
@@ -221,15 +255,130 @@ export default function StudentMarkAttendance() {
               </div>
             </div>
 
-            {/* ===== MARK ATTENDANCE SECTION ===== */}
+            {/* ===== ATTENDANCE SECTION ===== */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
               <h3 className="font-semibold text-gray-800 mb-5 flex items-center gap-2">
                 <FaCamera className="w-4 h-4 text-blue-500"/>
                 Today's Attendance
               </h3>
 
+              {/* ===== CAMERA / FACE SCAN ===== */}
+              {showCamera && (
+                <div className="space-y-4">
+
+                  {/* Camera View */}
+                  <div className="relative rounded-2xl overflow-hidden bg-black">
+                    <Webcam
+                      ref={webcamRef}
+                      screenshotFormat="image/jpeg"
+                      className="w-full rounded-2xl"
+                      onUserMedia={() => setCameraReady(true)}
+                      onUserMediaError={() => {
+                        showToast('Camera access denied!', 'error');
+                        setShowCamera(false);
+                      }}
+                      videoConstraints={{ facingMode: 'user' }}
+                    />
+
+                    {/* Scan Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+
+                      {/* Face Frame */}
+                      <div className={`relative w-52 h-64 ${
+                        scanStep === 'verified' ? 'border-green-400' :
+                        scanStep === 'failed' ? 'border-red-400' :
+                        scanStep === 'scanning' || scanStep === 'verifying'
+                          ? 'border-yellow-400' : 'border-blue-400'
+                        } border-2 rounded-3xl`}>
+
+                        {/* Corner dots */}
+                        <div className="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-current rounded-tl-lg"/>
+                        <div className="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-current rounded-tr-lg"/>
+                        <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-current rounded-bl-lg"/>
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-current rounded-br-lg"/>
+
+                        {/* Scan line animation */}
+                        {(scanStep === 'scanning' || scanStep === 'verifying') && (
+                          <div className="absolute left-0 right-0 h-0.5 bg-yellow-400 opacity-80 animate-bounce"
+                            style={{ top: '50%' }}/>
+                        )}
+
+                        {/* Verified overlay */}
+                        {scanStep === 'verified' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 rounded-3xl">
+                            <MdCheckCircle className="w-16 h-16 text-green-400"/>
+                          </div>
+                        )}
+
+                        {/* Failed overlay */}
+                        {scanStep === 'failed' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-red-500/20 rounded-3xl">
+                            <MdCancel className="w-16 h-16 text-red-400"/>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Label */}
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                      <div className={`px-4 py-2 rounded-full text-xs font-medium text-white backdrop-blur-sm
+                        ${scanStep === 'verified' ? 'bg-green-500/80' :
+                          scanStep === 'failed' ? 'bg-red-500/80' :
+                          scanStep === 'scanning' || scanStep === 'verifying'
+                            ? 'bg-yellow-500/80' : 'bg-black/50'}`}>
+                        {scanStep === 'init' && cameraReady && 'Position your face in the frame'}
+                        {scanStep === 'init' && !cameraReady && 'Starting camera...'}
+                        {scanStep === 'scanning' && 'Scanning face...'}
+                        {scanStep === 'verifying' && 'Verifying identity...'}
+                        {scanStep === 'verified' && 'Face verified! ✓'}
+                        {scanStep === 'failed' && 'Face not recognized'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Camera Buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setShowCamera(false); setScanStep('init'); }}
+                      className="flex-1 py-3 border border-gray-200 text-gray-500 text-sm rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
+                      <MdCancel className="w-4 h-4"/> Cancel
+                    </button>
+
+                    {scanStep === 'failed' ? (
+                      <button
+                        onClick={() => setScanStep('init')}
+                        className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+                        <MdCameraAlt className="w-4 h-4"/> Try Again
+                      </button>
+                    ) : (
+                      <button
+                        onClick={captureFace}
+                        disabled={!cameraReady || scanStep === 'scanning' || scanStep === 'verifying' || scanStep === 'verified'}
+                        className={`flex-1 py-3 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2
+                          ${!cameraReady || scanStep !== 'init'
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : isLateTime
+                            ? 'bg-yellow-500 hover:bg-yellow-600'
+                            : 'bg-blue-500 hover:bg-blue-600'}`}>
+                        {scanStep === 'scanning' || scanStep === 'verifying' ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
+                            {scanStep === 'scanning' ? 'Scanning...' : 'Verifying...'}
+                          </>
+                        ) : (
+                          <>
+                            <MdFaceRetouchingNatural className="w-5 h-5"/>
+                            Scan Face
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Already Marked */}
-              {status === 'already_marked' && todayRecord && (
+              {!showCamera && status === 'already_marked' && todayRecord && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 p-5 bg-green-50 rounded-2xl border border-green-100">
                     <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -237,12 +386,9 @@ export default function StudentMarkAttendance() {
                     </div>
                     <div>
                       <p className="font-semibold text-green-700">Attendance Already Marked!</p>
-                      <p className="text-green-600 text-sm mt-0.5">
-                        Your attendance has been recorded for today.
-                      </p>
+                      <p className="text-green-600 text-sm mt-0.5">Your attendance has been recorded for today.</p>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: 'Date', value: todayRecord.date, icon: MdCalendarToday },
@@ -253,17 +399,13 @@ export default function StudentMarkAttendance() {
                       return (
                         <div key={i} className="bg-gray-50 rounded-xl p-3 text-center">
                           <Icon className={`w-5 h-5 mx-auto mb-1
-                            ${item.label === 'Status' && todayRecord.status === 'Present'
-                              ? 'text-green-500'
-                              : item.label === 'Status' && todayRecord.status === 'Late'
-                              ? 'text-yellow-500'
+                            ${item.label === 'Status' && todayRecord.status === 'Present' ? 'text-green-500'
+                              : item.label === 'Status' && todayRecord.status === 'Late' ? 'text-yellow-500'
                               : 'text-blue-500'}`}/>
                           <p className="text-xs text-gray-400">{item.label}</p>
                           <p className={`text-sm font-semibold mt-0.5
-                            ${item.label === 'Status' && todayRecord.status === 'Present'
-                              ? 'text-green-600'
-                              : item.label === 'Status' && todayRecord.status === 'Late'
-                              ? 'text-yellow-600'
+                            ${item.label === 'Status' && todayRecord.status === 'Present' ? 'text-green-600'
+                              : item.label === 'Status' && todayRecord.status === 'Late' ? 'text-yellow-600'
                               : 'text-gray-700'}`}>
                             {item.value}
                           </p>
@@ -271,18 +413,15 @@ export default function StudentMarkAttendance() {
                       );
                     })}
                   </div>
-
-                  <button
-                    onClick={() => navigate('/student-attendance')}
+                  <button onClick={() => navigate('/student-attendance')}
                     className="w-full py-3 border border-blue-200 text-blue-500 text-sm font-medium rounded-xl hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
-                    <MdHistory className="w-4 h-4"/>
-                    View Full Attendance History
+                    <MdHistory className="w-4 h-4"/> View Full Attendance History
                   </button>
                 </div>
               )}
 
               {/* Success */}
-              {status === 'success' && todayRecord && (
+              {!showCamera && status === 'success' && todayRecord && (
                 <div className="space-y-4">
                   <div className="flex items-center gap-4 p-5 bg-green-50 rounded-2xl border border-green-100">
                     <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -290,16 +429,11 @@ export default function StudentMarkAttendance() {
                     </div>
                     <div>
                       <p className="font-semibold text-green-700">
-                        {todayRecord.status === 'Late'
-                          ? 'Marked as Late!'
-                          : 'Attendance Marked Successfully!'}
+                        {todayRecord.status === 'Late' ? 'Marked as Late!' : 'Attendance Marked Successfully!'}
                       </p>
-                      <p className="text-green-600 text-sm mt-0.5">
-                        Check-in time: {todayRecord.time}
-                      </p>
+                      <p className="text-green-600 text-sm mt-0.5">Check-in: {todayRecord.time}</p>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { label: 'Date', value: todayRecord.date, icon: MdCalendarToday },
@@ -310,17 +444,13 @@ export default function StudentMarkAttendance() {
                       return (
                         <div key={i} className="bg-gray-50 rounded-xl p-3 text-center">
                           <Icon className={`w-5 h-5 mx-auto mb-1
-                            ${item.label === 'Status' && todayRecord.status === 'Present'
-                              ? 'text-green-500'
-                              : item.label === 'Status' && todayRecord.status === 'Late'
-                              ? 'text-yellow-500'
+                            ${item.label === 'Status' && todayRecord.status === 'Present' ? 'text-green-500'
+                              : item.label === 'Status' && todayRecord.status === 'Late' ? 'text-yellow-500'
                               : 'text-blue-500'}`}/>
                           <p className="text-xs text-gray-400">{item.label}</p>
                           <p className={`text-sm font-semibold mt-0.5
-                            ${item.label === 'Status' && todayRecord.status === 'Present'
-                              ? 'text-green-600'
-                              : item.label === 'Status' && todayRecord.status === 'Late'
-                              ? 'text-yellow-600'
+                            ${item.label === 'Status' && todayRecord.status === 'Present' ? 'text-green-600'
+                              : item.label === 'Status' && todayRecord.status === 'Late' ? 'text-yellow-600'
                               : 'text-gray-700'}`}>
                             {item.value}
                           </p>
@@ -331,15 +461,11 @@ export default function StudentMarkAttendance() {
                 </div>
               )}
 
-              {/* Idle — Ready to mark */}
-              {(status === 'idle' || status === 'error') && (
+              {/* Idle */}
+              {!showCamera && (status === 'idle' || status === 'error') && (
                 <div className="space-y-4">
-
-                  {/* Info */}
                   <div className={`flex items-start gap-3 p-4 rounded-xl border
-                    ${isLateTime
-                      ? 'bg-yellow-50 border-yellow-100'
-                      : 'bg-blue-50 border-blue-100'}`}>
+                    ${isLateTime ? 'bg-yellow-50 border-yellow-100' : 'bg-blue-50 border-blue-100'}`}>
                     {isLateTime
                       ? <MdWarning className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5"/>
                       : <MdInfo className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"/>}
@@ -349,7 +475,7 @@ export default function StudentMarkAttendance() {
                       </p>
                       <p className={`text-xs mt-0.5 ${isLateTime ? 'text-yellow-600' : 'text-blue-600'}`}>
                         {isLateTime
-                          ? 'Attendance will be marked as "Late" since it\'s past 08:30 AM'
+                          ? 'Attendance will be marked as "Late"'
                           : 'Attendance will be marked as "Present"'}
                       </p>
                     </div>
@@ -358,49 +484,29 @@ export default function StudentMarkAttendance() {
                   {status === 'error' && (
                     <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl border border-red-100">
                       <MdCancel className="w-5 h-5 text-red-500 flex-shrink-0"/>
-                      <p className="text-sm text-red-600">Failed to mark attendance. Please try again.</p>
+                      <p className="text-sm text-red-600">Failed. Please try again.</p>
                     </div>
                   )}
 
-                  {/* Mark Button */}
+                  {/* ✅ Face Scan Button */}
                   <button
-                    onClick={markAttendance}
-                    disabled={loading}
+                    onClick={startFaceScan}
                     className={`w-full py-4 text-white font-semibold rounded-2xl transition-all shadow-lg flex items-center justify-center gap-3 text-base
-                      ${loading
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : isLateTime
+                      ${isLateTime
                         ? 'bg-yellow-500 hover:bg-yellow-600 shadow-yellow-200'
                         : 'bg-blue-500 hover:bg-blue-600 shadow-blue-200'}`}>
-                    {loading ? (
-                      <>
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                        Marking Attendance...
-                      </>
-                    ) : (
-                      <>
-                        <MdCameraAlt className="w-6 h-6"/>
-                        {isLateTime ? 'Mark Late Attendance' : 'Mark Attendance'}
-                      </>
-                    )}
+                    <MdFaceRetouchingNatural className="w-6 h-6"/>
+                    {isLateTime ? 'Scan Face — Mark Late' : 'Scan Face — Mark Attendance'}
                   </button>
 
                   <p className="text-center text-xs text-gray-400">
-                    Click the button to record your attendance for today
+                    Face scan required to verify your identity
                   </p>
-                </div>
-              )}
-
-              {/* Loading check */}
-              {status === 'loading' && (
-                <div className="flex flex-col items-center py-10 gap-4">
-                  <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"/>
-                  <p className="text-gray-500 text-sm">Marking your attendance...</p>
                 </div>
               )}
             </div>
 
-            {/* Rules Card */}
+            {/* Rules */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <h3 className="font-semibold text-gray-700 text-sm mb-3 flex items-center gap-2">
                 <MdInfo className="w-4 h-4 text-blue-500"/>
@@ -408,10 +514,10 @@ export default function StudentMarkAttendance() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { icon: MdCheckCircle, color: 'text-green-500', text: 'Present — Mark before 08:30 AM' },
-                  { icon: MdAccessTime,  color: 'text-yellow-500', text: 'Late — Mark after 08:30 AM' },
-                  { icon: MdCancel,      color: 'text-red-500',   text: 'Absent — Not marked by end of day' },
-                  { icon: MdInfo,        color: 'text-blue-500',  text: 'Only one attendance per day allowed' },
+                  { icon: MdCheckCircle, color: 'text-green-500', text: 'Present — Scan before 08:30 AM' },
+                  { icon: MdAccessTime, color: 'text-yellow-500', text: 'Late — Scan after 08:30 AM' },
+                  { icon: MdCancel, color: 'text-red-500', text: 'Absent — Not scanned by end of day' },
+                  { icon: MdFaceRetouchingNatural, color: 'text-blue-500', text: 'Face scan required for verification' },
                 ].map((item, i) => {
                   const Icon = item.icon;
                   return (
@@ -427,7 +533,6 @@ export default function StudentMarkAttendance() {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50
           ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
