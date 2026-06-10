@@ -18,10 +18,10 @@ def get_all_attendance():
                 a.id,
                 a.student_id,
                 s.name AS student_name,
-                s.class_name,
+                COALESCE(s.class_name, '') AS class_name,
                 a.date::text,
-                a.status,
-                COALESCE(a.check_in_time::text, '—') AS time,
+                COALESCE(a.status, 'Present') AS status,
+                COALESCE(a.time_in::text, '—') AS time_in,
                 TRIM(TO_CHAR(a.date, 'Day')) AS day
             FROM attendance a
             JOIN students s ON s.id = a.student_id
@@ -44,7 +44,7 @@ def get_all_attendance():
         conn.close()
         return jsonify(records), 200
     except Exception as e:
-        print(f"❌ Attendance Error: {e}")
+        print(f"❌ Error: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ✅ Get attendance by student ID
@@ -57,8 +57,8 @@ def get_student_attendance(student_id):
             SELECT
                 id,
                 date::text,
-                status,
-                COALESCE(check_in_time::text, '—') AS time,
+                COALESCE(status, 'Present') AS status,
+                COALESCE(time_in::text, '—') AS time_in,
                 TRIM(TO_CHAR(date, 'Day')) AS day
             FROM attendance
             WHERE student_id = %s
@@ -78,10 +78,10 @@ def get_student_attendance(student_id):
         conn.close()
         return jsonify(records), 200
     except Exception as e:
-        print(f"❌ Student Attendance Error: {e}")
+        print(f"❌ Error: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ✅ Mark attendance (Admin / System)
+# ✅ Mark attendance
 @attendance_bp.route('/mark', methods=['POST'])
 def mark_attendance():
     try:
@@ -93,12 +93,12 @@ def mark_attendance():
         cur = conn.cursor()
         cur.execute("""
             INSERT INTO attendance
-                (student_id, date, status, check_in_time)
+                (student_id, date, status, time_in)
             VALUES (%s, %s, %s, %s)
             ON CONFLICT (student_id, date)
             DO UPDATE SET
-                status = EXCLUDED.status,
-                check_in_time = EXCLUDED.check_in_time
+                status  = EXCLUDED.status,
+                time_in = EXCLUDED.time_in
             RETURNING id
         """, (
             data.get('studentId'),
@@ -116,7 +116,7 @@ def mark_attendance():
         return jsonify({'error': str(e)}), 500
 
 # ✅ Get attendance by class
-@attendance_bp.route('/class/<class_name>', methods=['GET'])
+@attendance_bp.route('/class/<path:class_name>', methods=['GET'])
 def get_class_attendance(class_name):
     try:
         conn = get_db()
@@ -127,8 +127,8 @@ def get_class_attendance(class_name):
                 s.name AS student_name,
                 s.student_id,
                 a.date::text,
-                a.status,
-                COALESCE(a.check_in_time::text, '—') AS time
+                COALESCE(a.status, 'Present') AS status,
+                COALESCE(a.time_in::text, '—') AS time_in
             FROM attendance a
             JOIN students s ON s.id = a.student_id
             WHERE s.class_name = %s
@@ -149,5 +149,5 @@ def get_class_attendance(class_name):
         conn.close()
         return jsonify(records), 200
     except Exception as e:
-        print(f"❌ Class Attendance Error: {e}")
+        print(f"❌ Class Error: {e}")
         return jsonify({'error': str(e)}), 500
