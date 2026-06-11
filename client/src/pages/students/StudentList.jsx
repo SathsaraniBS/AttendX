@@ -6,10 +6,12 @@ import {
   MdCalendarToday, MdClose, MdCheck, MdPeople,
   MdPerson, MdEmail, MdPhone, MdBadge, MdClass,
   MdCameraAlt, MdContentCopy, MdVisibilityOff,
-  MdVisibility, MdDownload, MdRefresh, MdBarChart
+  MdVisibility, MdDownload, MdRefresh, MdBarChart,
+  MdFaceRetouchingNatural
 } from 'react-icons/md';
 import { FaUserGraduate } from 'react-icons/fa';
 import AdminSidebar from '../../components/AdminComponents/AdminSidebar';
+import FaceRegisterModal from '../../components/AdminComponents/FaceRegisterModal';
 
 const API_BASE = 'http://localhost:5000/api/students';
 const STORAGE_KEY = 'attendx_students';
@@ -23,7 +25,7 @@ const generatePassword = () => {
   ).join('');
 };
 
-// ==================== MODAL ====================
+// ==================== ADD STUDENT MODAL ====================
 function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
   const fileRef = useRef(null);
   const [form, setForm] = useState({
@@ -64,7 +66,7 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
 
   const handleSubmit = async () => {
     if (!form.name || !form.studentId || !form.email || !form.className) {
-      alert('Please fill all required fields! (Name, ID, Email, Class)');
+      alert('Please fill all required fields!');
       return;
     }
     setSaving(true);
@@ -78,7 +80,6 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
 
-        {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <FaUserGraduate className="w-5 h-5 text-blue-500"/>
@@ -121,8 +122,7 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                 <MdPerson className="w-4 h-4 text-gray-400"/> Full Name *
               </label>
               <input type="text" placeholder="e.g. Kasun Perera"
-                value={form.name}
-                onChange={e => setForm({...form, name: e.target.value})}
+                value={form.name} onChange={e => setForm({...form, name: e.target.value})}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
@@ -130,8 +130,7 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                 <MdBadge className="w-4 h-4 text-gray-400"/> Student ID *
               </label>
               <input type="text" placeholder="e.g. BSIT1A001"
-                value={form.studentId}
-                onChange={e => setForm({...form, studentId: e.target.value})}
+                value={form.studentId} onChange={e => setForm({...form, studentId: e.target.value})}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
           </div>
@@ -143,8 +142,7 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                 <MdEmail className="w-4 h-4 text-gray-400"/> Email Address *
               </label>
               <input type="email" placeholder="student@student.attendx.lk"
-                value={form.email}
-                onChange={e => setForm({...form, email: e.target.value})}
+                value={form.email} onChange={e => setForm({...form, email: e.target.value})}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
@@ -152,8 +150,7 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                 <MdPhone className="w-4 h-4 text-gray-400"/> Phone Number
               </label>
               <input type="tel" placeholder="e.g. 0771234567"
-                value={form.phone}
-                onChange={e => setForm({...form, phone: e.target.value})}
+                value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
           </div>
@@ -197,12 +194,10 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                   Regenerate
                 </button>
               </div>
-
               <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100 mb-2">
                 <p className="text-xs text-gray-400 mb-0.5">Email</p>
                 <p className="text-sm text-gray-700 font-medium">{form.email || 'Enter email above'}</p>
               </div>
-
               <div className="bg-white rounded-lg px-3 py-2.5 border border-blue-100">
                 <p className="text-xs text-gray-400 mb-0.5">Password</p>
                 <div className="flex items-center justify-between">
@@ -212,7 +207,9 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="text-gray-400 hover:text-gray-600">
-                      {showPassword ? <MdVisibility className="w-4 h-4"/> : <MdVisibilityOff className="w-4 h-4"/>}
+                      {showPassword
+                        ? <MdVisibility className="w-4 h-4"/>
+                        : <MdVisibilityOff className="w-4 h-4"/>}
                     </button>
                     <button type="button" onClick={copyPassword}
                       className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-all
@@ -231,7 +228,6 @@ function AddStudentModal({ isOpen, onClose, onSave, editData, classes }) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex gap-3 px-6 py-4 border-t border-gray-100 sticky bottom-0 bg-white">
           <button onClick={onClose}
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50">
@@ -265,6 +261,11 @@ export default function StudentList() {
   const [toast, setToast] = useState(null);
   const [classOptions, setClassOptions] = useState([]);
 
+  // ✅ Face Register states
+  const [faceModalOpen, setFaceModalOpen] = useState(false);
+  const [faceStudent, setFaceStudent] = useState(null);
+  const [faceRegistered, setFaceRegistered] = useState({});
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -272,12 +273,10 @@ export default function StudentList() {
     try {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
     } catch { navigate('/'); return; }
-
     loadClassOptions();
     fetchStudents();
   }, [navigate]);
 
-  // ✅ Classes ෙලන් dynamic load
   const loadClassOptions = () => {
     try {
       const cached = localStorage.getItem(CLASSES_KEY);
@@ -288,11 +287,8 @@ export default function StudentList() {
     } catch { /* ignore */ }
   };
 
-  // ✅ localStorage + API hybrid
   const fetchStudents = async () => {
     setLoading(true);
-
-    // Step 1 — localStorage instant show
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
@@ -301,7 +297,6 @@ export default function StudentList() {
       }
     } catch { /* ignore */ }
 
-    // Step 2 — API fetch
     try {
       const token = localStorage.getItem('token');
       const res = await axios.get(`${API_BASE}/`, {
@@ -311,8 +306,7 @@ export default function StudentList() {
       const data = res.data || [];
       setStudents(data);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (err) {
-      console.log('API unavailable — using localStorage cache');
+    } catch {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) setStudents(JSON.parse(cached));
     } finally {
@@ -337,7 +331,6 @@ export default function StudentList() {
     return matchSearch && matchStatus && matchClass;
   });
 
-  // ✅ Save with localStorage fallback
   const handleSave = async (form) => {
     try {
       const token = localStorage.getItem('token');
@@ -347,7 +340,6 @@ export default function StudentList() {
         try {
           await axios.put(`${API_BASE}/${editData.id}`, form, { headers });
         } catch { /* local fallback */ }
-
         const updated = students.map(s =>
           s.id === editData.id ? { ...s, ...form, id: editData.id } : s
         );
@@ -362,14 +354,11 @@ export default function StudentList() {
         } catch (err) {
           const errMsg = err.response?.data?.error || '';
           if (errMsg.includes('Email already exists')) {
-            showToast('Email already exists!', 'error');
-            return;
+            showToast('Email already exists!', 'error'); return;
           }
           if (errMsg.includes('Student ID already exists')) {
-            showToast('Student ID already exists!', 'error');
-            return;
+            showToast('Student ID already exists!', 'error'); return;
           }
-          // Local fallback
           newStudent = {
             ...form, id: Date.now(),
             attendance: 0,
@@ -377,16 +366,14 @@ export default function StudentList() {
             photo: form.photoPreview || null,
           };
         }
-
         const updated = [...students, newStudent];
         setStudents(updated);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         showToast(`${form.name} added successfully!`);
       }
-
       setModalOpen(false);
       setEditData(null);
-    } catch (err) {
+    } catch {
       showToast('Error saving student!', 'error');
     }
   };
@@ -398,7 +385,6 @@ export default function StudentList() {
         headers: { Authorization: `Bearer ${token}` }
       });
     } catch { /* local fallback */ }
-
     const updated = students.filter(s => s.id !== id);
     setStudents(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -415,7 +401,6 @@ export default function StudentList() {
         }).catch(() => {}))
       );
     } catch { /* ignore */ }
-
     const updated = students.filter(s => !selectedIds.includes(s.id));
     setStudents(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -459,11 +444,13 @@ export default function StudentList() {
     { label: 'Avg Attendance', value: students.length > 0 ? `${Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)}%` : '0%', icon: MdBarChart, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
-  // ✅ Unique class list from students + classOptions
   const allClasses = [...new Set([
     ...classOptions,
     ...students.map(s => s.className).filter(Boolean)
   ])];
+
+  // ✅ Face registered check
+  const hasFace = (s) => faceRegistered[s.id] || s.photo || s.faceEncoding;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -574,6 +561,18 @@ export default function StudentList() {
               </div>
             ) : (
               <>
+                {/* ✅ Face Registration Legend */}
+                <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1.5">
+                    <MdFaceRetouchingNatural className="w-4 h-4 text-green-500"/>
+                    Face Registered
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <MdFaceRetouchingNatural className="w-4 h-4 text-orange-400"/>
+                    Face Not Registered
+                  </span>
+                </div>
+
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
@@ -598,6 +597,8 @@ export default function StudentList() {
                             onChange={() => toggleSelect(s.id)}
                             className="w-4 h-4 rounded border-gray-300 cursor-pointer"/>
                         </td>
+
+                        {/* Student */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-blue-100 flex items-center justify-center">
@@ -608,6 +609,7 @@ export default function StudentList() {
                             <p className="text-sm font-medium text-gray-800">{s.name}</p>
                           </div>
                         </td>
+
                         <td className="px-4 py-3">
                           <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded-lg">
                             {s.studentId}
@@ -620,6 +622,8 @@ export default function StudentList() {
                             {s.className}
                           </span>
                         </td>
+
+                        {/* Attendance */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-gray-100 rounded-full">
@@ -632,19 +636,48 @@ export default function StudentList() {
                             </span>
                           </div>
                         </td>
+
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${statusColor(s.status)}`}>
                             {s.status}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-xs text-gray-400">{s.joinDate || '—'}</td>
+
+                        {/* ✅ Actions — Face + Edit + Delete */}
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => { setEditData(s); setModalOpen(true); }}
+
+                            {/* Face Register Button */}
+                            <button
+                              onClick={() => {
+                                setFaceStudent(s);
+                                setFaceModalOpen(true);
+                              }}
+                              title={hasFace(s) ? 'Update Face' : 'Register Face'}
+                              className={`p-1.5 rounded-lg transition-all relative group
+                                ${hasFace(s)
+                                  ? 'text-green-500 hover:bg-green-50'
+                                  : 'text-orange-400 hover:bg-orange-50'}`}>
+                              <MdFaceRetouchingNatural className="w-4 h-4"/>
+                              {/* Tooltip */}
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                {hasFace(s) ? 'Update Face' : 'Register Face'}
+                              </span>
+                            </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => { setEditData(s); setModalOpen(true); }}
+                              title="Edit Student"
                               className="p-1.5 text-blue-400 hover:bg-blue-50 rounded-lg transition-all">
                               <MdEdit className="w-4 h-4"/>
                             </button>
-                            <button onClick={() => setDeleteId(s.id)}
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => setDeleteId(s.id)}
+                              title="Delete Student"
                               className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
                               <MdDelete className="w-4 h-4"/>
                             </button>
@@ -689,13 +722,28 @@ export default function StudentList() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add/Edit Modal */}
       <AddStudentModal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditData(null); }}
         onSave={handleSave}
         editData={editData}
         classes={allClasses}
+      />
+
+      {/* ✅ Face Register Modal */}
+      <FaceRegisterModal
+        isOpen={faceModalOpen}
+        onClose={() => {
+          setFaceModalOpen(false);
+          setFaceStudent(null);
+        }}
+        student={faceStudent}
+        onSuccess={(studentId) => {
+          setFaceRegistered(prev => ({ ...prev, [studentId]: true }));
+          showToast(`Face registered for ${faceStudent?.name}!`);
+          fetchStudents();
+        }}
       />
 
       {/* Delete Confirm */}
