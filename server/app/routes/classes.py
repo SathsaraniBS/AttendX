@@ -1,44 +1,158 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+import psycopg2
+import os
 
 classes_bp = Blueprint('classes', __name__)
 
-classes_store = []
+def get_db():
+    return psycopg2.connect(os.getenv('DATABASE_URL'))
 
+
+# ✅ Get all classes
 @classes_bp.route('/', methods=['GET'])
 def get_classes():
-    return jsonify(classes_store), 200
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute("""
+            SELECT
+                c.id,
+                c.name,
+                c.code,
+                c.teacher,
+                c.schedule,
+                c.room,
+                c.capacity,
+                c.status,
+                c.created_at::text,
+                COUNT(s.id) AS enrolled
+            FROM classes c
+            LEFT JOIN students s ON s.class_name = c.name
+            GROUP BY c.id
+            ORDER BY c.id ASC
+        """)
+        rows = cur.fetchall()
+        classes = []
+        for row in rows:
+            classes.append({
+                'id':        row[0],
+                'name':      row[1] or '',
+                'code':      row[2] or '',
+                'teacher':   row[3] or '',
+                'schedule':  row[4] or '',
+                'room':      row[5] or '',
+                'capacity':  row[6] or 40,
+                'status':    row[7] or 'Active',
+                'createdAt': row[8] or '',
+                'enrolled':  row[9] or 0,
+            })
+        cur.close()
+        conn.close()
+        return jsonify(classes), 200
 
+    except Exception as e:
+        print(f"❌ GET Classes Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ✅ Add class
 @classes_bp.route('/', methods=['POST'])
 def add_class():
-    data = request.get_json()
-    new_class = {
-        'id': len(classes_store) + 1,
-        'name': data.get('name', ''),
-        'code': data.get('code', ''),
-        'teacher': data.get('teacher', ''),
-        'schedule': data.get('schedule', ''),
-        'room': data.get('room', ''),
-        'capacity': int(data.get('capacity', 0)),
-        'status': data.get('status', 'Active'),
-        'enrolled': 0,
-        'attendance': 0,
-        'created_at': datetime.now().isoformat()
-    }
-    classes_store.append(new_class)
-    return jsonify(new_class), 201
+    try:
+        data = request.get_json()
+        if not data or not data.get('name'):
+            return jsonify({'error': 'Class name required'}), 400
 
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute("""
+            INSERT INTO classes
+                (name, code, teacher, schedule, room, capacity, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            data.get('name'),
+            data.get('code', ''),
+            data.get('teacher', ''),
+            data.get('schedule', ''),
+            data.get('room', ''),
+            data.get('capacity', 40),
+            data.get('status', 'Active'),
+        ))
+        new_id = cur.fetchone()[0]
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({
+            'id':       new_id,
+            'name':     data.get('name'),
+            'code':     data.get('code', ''),
+            'teacher':  data.get('teacher', ''),
+            'schedule': data.get('schedule', ''),
+            'room':     data.get('room', ''),
+            'capacity': data.get('capacity', 40),
+            'status':   data.get('status', 'Active'),
+            'enrolled': 0,
+        }), 201
+
+    except Exception as e:
+        print(f"❌ ADD Class Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ✅ Update class
 @classes_bp.route('/<int:class_id>', methods=['PUT'])
 def update_class(class_id):
-    data = request.get_json()
-    for i, cls in enumerate(classes_store):
-        if cls['id'] == class_id:
-            classes_store[i] = {**cls, **data, 'id': class_id}
-            return jsonify(classes_store[i]), 200
-    return jsonify({'message': 'Class not found'}), 404
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data'}), 400
 
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute("""
+            UPDATE classes SET
+                name     = %s,
+                code     = %s,
+                teacher  = %s,
+                schedule = %s,
+                room     = %s,
+                capacity = %s,
+                status   = %s
+            WHERE id = %s
+        """, (
+            data.get('name'),
+            data.get('code', ''),
+            data.get('teacher', ''),
+            data.get('schedule', ''),
+            data.get('room', ''),
+            data.get('capacity', 40),
+            data.get('status', 'Active'),
+            class_id
+        ))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Updated successfully'}), 200
+
+    except Exception as e:
+        print(f"❌ UPDATE Class Error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ✅ Delete class
 @classes_bp.route('/<int:class_id>', methods=['DELETE'])
 def delete_class(class_id):
-    global classes_store
-    classes_store = [c for c in classes_store if c['id'] != class_id]
-    return jsonify({'message': 'Deleted'}), 200
+    try:
+        conn = get_db()
+        cur  = conn.cursor()
+        cur.execute("DELETE FROM classes WHERE id = %s", (class_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Deleted successfully'}), 200
+
+    except Exception as e:
+        print(f"❌ DELETE Class Error: {e}")
+        return jsonify({'error': str(e)}), 500
