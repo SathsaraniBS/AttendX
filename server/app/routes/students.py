@@ -17,10 +17,7 @@ def get_students():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                id,
-                name,
-                student_id,
-                email,
+                id, name, student_id, email,
                 COALESCE(phone, '') AS phone,
                 COALESCE(class_name, '') AS class_name,
                 COALESCE(status, 'Active') AS status,
@@ -29,8 +26,7 @@ def get_students():
                 photo_path,
                 CASE WHEN face_encoding IS NOT NULL
                 THEN true ELSE false END AS has_face
-            FROM students
-            ORDER BY id ASC
+            FROM students ORDER BY id ASC
         """)
         rows = cur.fetchall()
         students = []
@@ -51,13 +47,12 @@ def get_students():
         cur.close()
         conn.close()
         return jsonify(students), 200
-
     except Exception as e:
         print(f"❌ GET Error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Add student — auto users table insert
+# ✅ Add student
 @students_bp.route('/add', methods=['POST'])
 def add_student():
     try:
@@ -72,28 +67,19 @@ def add_student():
         conn = get_db()
         cur = conn.cursor()
 
-        # ✅ Duplicate email check
-        cur.execute(
-            "SELECT id FROM students WHERE email = %s",
-            (data['email'],)
-        )
+        cur.execute("SELECT id FROM students WHERE email = %s", (data['email'],))
         if cur.fetchone():
             cur.close(); conn.close()
             return jsonify({'error': 'Email already exists'}), 400
 
-        # ✅ Duplicate student_id check
         if data.get('studentId'):
-            cur.execute(
-                "SELECT id FROM students WHERE student_id = %s",
-                (data['studentId'],)
-            )
+            cur.execute("SELECT id FROM students WHERE student_id = %s", (data['studentId'],))
             if cur.fetchone():
                 cur.close(); conn.close()
                 return jsonify({'error': 'Student ID already exists'}), 400
 
         join_date = datetime.now().strftime('%Y-%m-%d')
 
-        # ✅ Step 1 — Students table insert
         cur.execute("""
             INSERT INTO students
                 (name, student_id, email, phone,
@@ -112,21 +98,16 @@ def add_student():
         ))
         new_id = cur.fetchone()[0]
 
-        # ✅ Step 2 — Auto users table insert
-        password = data.get('password', '')
-        if not password:
-            password = data.get('email', '').split('@')[0]
-
+        # ✅ Auto users table insert
+        password = data.get('password', '') or data.get('email', '').split('@')[0]
         cur.execute("""
             INSERT INTO users (email, password, role)
             VALUES (%s, %s, 'student')
             ON CONFLICT (email) DO UPDATE
-            SET password = EXCLUDED.password,
-                role     = 'student'
+            SET password = EXCLUDED.password, role = 'student'
         """, (data.get('email'), password))
 
-        print(f"✅ Student + User created: {data.get('email')}")
-
+        print(f"✅ Student + User: {data.get('email')}")
         conn.commit()
         cur.close()
         conn.close()
@@ -157,20 +138,17 @@ def get_student(student_id):
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            SELECT
-                id, name, student_id, email,
-                COALESCE(phone, '') AS phone,
-                COALESCE(class_name, '') AS class_name,
-                COALESCE(status, 'Active') AS status,
-                COALESCE(attendance, 0) AS attendance,
-                COALESCE(join_date::text, '') AS join_date,
-                photo_path,
-                CASE WHEN face_encoding IS NOT NULL
-                THEN true ELSE false END AS has_face
-            FROM students
-            WHERE id = %s
+            SELECT id, name, student_id, email,
+                   COALESCE(phone, '') AS phone,
+                   COALESCE(class_name, '') AS class_name,
+                   COALESCE(status, 'Active') AS status,
+                   COALESCE(attendance, 0) AS attendance,
+                   COALESCE(join_date::text, '') AS join_date,
+                   photo_path,
+                   CASE WHEN face_encoding IS NOT NULL
+                   THEN true ELSE false END AS has_face
+            FROM students WHERE id = %s
         """, (student_id,))
-
         row = cur.fetchone()
         cur.close()
         conn.close()
@@ -197,7 +175,7 @@ def get_student(student_id):
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Update student — users table auto sync
+# ✅ Update student
 @students_bp.route('/<int:student_id>', methods=['PUT'])
 def update_student(student_id):
     try:
@@ -208,23 +186,14 @@ def update_student(student_id):
         conn = get_db()
         cur = conn.cursor()
 
-        # ✅ Old email get
-        cur.execute(
-            "SELECT email FROM students WHERE id = %s",
-            (student_id,)
-        )
-        old_row  = cur.fetchone()
+        cur.execute("SELECT email FROM students WHERE id = %s", (student_id,))
+        old_row   = cur.fetchone()
         old_email = old_row[0] if old_row else None
 
-        # ✅ Students table update
         cur.execute("""
             UPDATE students SET
-                name       = %s,
-                email      = %s,
-                phone      = %s,
-                class_name = %s,
-                status     = %s,
-                student_id = %s
+                name = %s, email = %s, phone = %s,
+                class_name = %s, status = %s, student_id = %s
             WHERE id = %s
         """, (
             data.get('name'),
@@ -236,37 +205,26 @@ def update_student(student_id):
             student_id
         ))
 
-        # ✅ Users table sync
         new_email = data.get('email')
         if old_email and new_email:
-
             if old_email != new_email:
                 cur.execute("""
                     DELETE FROM users
                     WHERE email = %s AND role = 'student'
                 """, (old_email,))
 
-            # Password get
             password = data.get('password', '')
             if not password:
-                # Existing password keep
-                cur.execute(
-                    "SELECT password FROM users WHERE email = %s",
-                    (old_email,)
-                )
+                cur.execute("SELECT password FROM users WHERE email = %s", (old_email,))
                 pw_row   = cur.fetchone()
                 password = pw_row[0] if pw_row else new_email.split('@')[0]
 
-            # ✅ Upsert user
             cur.execute("""
                 INSERT INTO users (email, password, role)
                 VALUES (%s, %s, 'student')
                 ON CONFLICT (email) DO UPDATE
-                SET password = EXCLUDED.password,
-                    role     = 'student'
+                SET password = EXCLUDED.password, role = 'student'
             """, (new_email, password))
-
-            print(f"✅ User updated: {new_email}")
 
         conn.commit()
         cur.close()
@@ -278,40 +236,26 @@ def update_student(student_id):
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Delete student — users + attendance auto delete
+# ✅ Delete student
 @students_bp.route('/<int:student_id>', methods=['DELETE'])
 def delete_student(student_id):
     try:
         conn = get_db()
         cur = conn.cursor()
 
-        # ✅ Email get before delete
-        cur.execute(
-            "SELECT email FROM students WHERE id = %s",
-            (student_id,)
-        )
+        cur.execute("SELECT email FROM students WHERE id = %s", (student_id,))
         row   = cur.fetchone()
         email = row[0] if row else None
 
-        # ✅ Attendance records delete first (FK constraint)
-        cur.execute(
-            "DELETE FROM attendance WHERE student_id = %s",
-            (student_id,)
-        )
+        cur.execute("DELETE FROM attendance WHERE student_id = %s", (student_id,))
+        cur.execute("DELETE FROM students WHERE id = %s", (student_id,))
 
-        # ✅ Student delete
-        cur.execute(
-            "DELETE FROM students WHERE id = %s",
-            (student_id,)
-        )
-
-        # ✅ Users table delete
         if email:
             cur.execute("""
                 DELETE FROM users
                 WHERE email = %s AND role = 'student'
             """, (email,))
-            print(f"✅ User deleted: {email}")
+            print(f"✅ Deleted: {email}")
 
         conn.commit()
         cur.close()
@@ -323,44 +267,38 @@ def delete_student(student_id):
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Sync all existing students to users table
+# ✅ Sync all students to users table
 @students_bp.route('/sync-users', methods=['POST'])
 def sync_users():
     try:
         conn = get_db()
         cur = conn.cursor()
 
-        # All students get
-        cur.execute("SELECT id, email, student_id FROM students")
-        students = cur.fetchall()
+        cur.execute("SELECT id, email FROM students WHERE email IS NOT NULL")
+        all_students = cur.fetchall()
 
         count   = 0
         skipped = 0
 
-        for student in students:
-            email      = student[1]
-            student_id = student[2]
-
+        for s in all_students:
+            email = s[1]
             if not email:
                 skipped += 1
                 continue
 
-            # Password = email prefix
             password = email.split('@')[0]
-
             cur.execute("""
                 INSERT INTO users (email, password, role)
                 VALUES (%s, %s, 'student')
                 ON CONFLICT (email) DO NOTHING
             """, (email, password))
-
             count += 1
 
         conn.commit()
         cur.close()
         conn.close()
 
-        print(f"✅ Synced {count} students to users table")
+        print(f"✅ Synced {count} students")
         return jsonify({
             'message': f'✅ {count} students synced!',
             'synced':  count,
