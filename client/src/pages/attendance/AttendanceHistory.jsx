@@ -1,84 +1,27 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
+  MdAssignment, MdBarChart, MdHistory,
   MdLogout, MdMenu, MdSearch, MdCalendarToday,
-  MdFilterList, MdDownload, MdClose, MdCheck,
-  MdChevronLeft, MdChevronRight, MdPerson,
+  MdDownload, MdClose,
+  MdChevronLeft, MdChevronRight,
   MdAccessTime, MdCheckCircle, MdCancel,
-  MdRefresh, MdPrint
+  MdRefresh
 } from 'react-icons/md';
 import { FaUserCheck, FaUserTimes } from 'react-icons/fa';
 import {
   BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 import AdminSidebar from '../../components/AdminComponents/AdminSidebar';
-
-// ==================== SAMPLE DATA ====================
-const generateAttendanceData = () => {
-  const students = [
-    { name: 'Kasun Perera', id: 'S2024001', class: 'BCA - 2A' },
-    { name: 'Nimal Silva', id: 'S2024002', class: 'BCA - 2A' },
-    { name: 'Amali Fernando', id: 'S2024003', class: 'BCA - 2B' },
-    { name: 'Sathsarani BS', id: 'S2024004', class: 'BCA - 2B' },
-    { name: 'Bandara Perera', id: 'S2024005', class: 'BCA - 3A' },
-    { name: 'Chamara Silva', id: 'S2024006', class: 'BCA - 3A' },
-    { name: 'Dilani Jayawardena', id: 'S2024007', class: 'BCA - 3B' },
-    { name: 'Eranga Bandara', id: 'S2024008', class: 'BCA - 1A' },
-  ];
-
-  const statuses = ['Present', 'Present', 'Present', 'Late', 'Absent'];
-  const records = [];
-  let id = 1;
-
-  for (let day = 0; day < 30; day++) {
-    const date = new Date();
-    date.setDate(date.getDate() - day);
-    if (date.getDay() === 0 || date.getDay() === 6) continue;
-
-    students.forEach(student => {
-      const status = statuses[Math.floor(Math.random() * statuses.length)];
-      const hour = 8 + Math.floor(Math.random() * 2);
-      const min = Math.floor(Math.random() * 59).toString().padStart(2, '0');
-      records.push({
-        id: id++,
-        studentName: student.name,
-        studentId: student.id,
-        class: student.class,
-        date: date.toISOString().split('T')[0],
-        timeIn: status === 'Absent' ? '--' : `${hour}:${min} AM`,
-        status,
-      });
-    });
-  }
-  return records;
-};
-
-const allRecords = generateAttendanceData();
-
-const weeklyChartData = [
-  { day: 'Mon', present: 85, absent: 15 },
-  { day: 'Tue', present: 78, absent: 22 },
-  { day: 'Wed', present: 90, absent: 10 },
-  { day: 'Thu', present: 72, absent: 28 },
-  { day: 'Fri', present: 88, absent: 12 },
-];
-
-const monthlyTrend = [
-  { week: 'W1', rate: 82 },
-  { week: 'W2', rate: 75 },
-  { week: 'W3', rate: 88 },
-  { week: 'W4', rate: 79 },
-];
 
 // ==================== ATTENDANCE HISTORY PAGE ====================
 export default function AttendanceHistory() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [records, setRecords] = useState(allRecords);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterClass, setFilterClass] = useState('All');
@@ -89,22 +32,68 @@ export default function AttendanceHistory() {
   const [editRecord, setEditRecord] = useState(null);
   const perPage = 10;
 
+  // ==================== FETCH REAL DATA ====================
+  const fetchAttendance = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/attendance/history', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+      setRecords(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Fetch error:', err);
+      setError('Failed to load attendance records.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token) { navigate('/'); return; }
     try {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
-    } catch { navigate('/'); }
+    } catch { navigate('/'); return; }
+    fetchAttendance();
   }, [navigate]);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
+  // ==================== STATUS UPDATE (DB) ====================
+  const handleStatusChange = async (id, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/attendance/${id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) throw new Error('Update failed');
+      // Update local state immediately
+      setRecords(prev => prev.map(r =>
+        r.id === id ? { ...r, status: newStatus } : r
+      ));
+      setEditRecord(null);
+    } catch (err) {
+      console.error('Status update error:', err);
+      alert('Failed to update status. Please try again.');
+    }
+  };
+
+  // ==================== FILTER ====================
   const filtered = records.filter(r => {
     const matchSearch =
-      r.studentName.toLowerCase().includes(search.toLowerCase()) ||
-      r.studentId.toLowerCase().includes(search.toLowerCase()) ||
-      r.class.toLowerCase().includes(search.toLowerCase());
+      (r.studentName || '').toLowerCase().includes(search.toLowerCase()) ||
+      String(r.studentId || '').toLowerCase().includes(search.toLowerCase()) ||
+      (r.class || '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'All' || r.status === filterStatus;
     const matchClass = filterClass === 'All' || r.class === filterClass;
     const matchFrom = !dateFrom || r.date >= dateFrom;
@@ -115,6 +104,7 @@ export default function AttendanceHistory() {
   const totalPages = Math.ceil(filtered.length / perPage);
   const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
+  // ==================== HELPERS ====================
   const statusColor = (status) => {
     if (status === 'Present') return 'bg-green-50 text-green-600 border-green-100';
     if (status === 'Late') return 'bg-yellow-50 text-yellow-600 border-yellow-100';
@@ -127,17 +117,10 @@ export default function AttendanceHistory() {
     return <MdCancel className="w-3.5 h-3.5"/>;
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setRecords(prev => prev.map(r =>
-      r.id === id ? { ...r, status: newStatus } : r
-    ));
-    setEditRecord(null);
-  };
-
   const exportCSV = () => {
     const headers = ['Name', 'Student ID', 'Class', 'Date', 'Time In', 'Status'];
     const rows = filtered.map(r =>
-      [r.studentName, r.studentId, r.class, r.date, r.timeIn, r.status].join(',')
+      [r.studentName, r.studentId, r.class, r.date, r.timeIn || '--', r.status].join(',')
     );
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -148,6 +131,7 @@ export default function AttendanceHistory() {
     a.click();
   };
 
+  // ==================== STATS ====================
   const stats = [
     {
       label: 'Total Records',
@@ -179,12 +163,42 @@ export default function AttendanceHistory() {
     },
   ];
 
-  const classes = ['All', 'BCA - 1A', 'BCA - 2A', 'BCA - 2B', 'BCA - 3A', 'BCA - 3B'];
+  // ==================== ANALYTICS DATA (computed from real records) ====================
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const weeklyChartData = days.map(day => {
+    const dayRecords = records.filter(r => r.day === day);
+    const present = dayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+    const absent = dayRecords.filter(r => r.status === 'Absent').length;
+    return { day, present, absent };
+  });
 
+  const getWeekNumber = (dateStr) => {
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    return `W${Math.ceil(day / 7)}`;
+  };
+
+  const weeklyGroups = {};
+  records.forEach(r => {
+    if (!r.date) return;
+    const week = getWeekNumber(r.date);
+    if (!weeklyGroups[week]) weeklyGroups[week] = { total: 0, attended: 0 };
+    weeklyGroups[week].total++;
+    if (r.status === 'Present' || r.status === 'Late') weeklyGroups[week].attended++;
+  });
+  const monthlyTrend = Object.entries(weeklyGroups).map(([week, val]) => ({
+    week,
+    rate: val.total > 0 ? Math.round((val.attended / val.total) * 100) : 0
+  })).sort((a, b) => a.week.localeCompare(b.week));
+
+  // Dynamic class list from real data
+  const uniqueClasses = ['All', ...new Set(records.map(r => r.class).filter(Boolean))];
+
+  // ==================== RENDER ====================
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar user={user} onLogout={handleLogout}/>
-      
+
       <div className="flex-1 ml-56">
 
         {/* Top Bar */}
@@ -279,11 +293,11 @@ export default function AttendanceHistory() {
                       className="border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-500 focus:outline-none focus:border-blue-400"/>
                   </div>
 
-                  {/* Class Filter */}
+                  {/* Class Filter — dynamic from real DB */}
                   <select value={filterClass}
                     onChange={e => { setFilterClass(e.target.value); setCurrentPage(1); }}
                     className="border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-500 focus:outline-none bg-white">
-                    {classes.map(c => <option key={c}>{c}</option>)}
+                    {uniqueClasses.map(c => <option key={c}>{c}</option>)}
                   </select>
 
                   {/* Status Filter */}
@@ -315,6 +329,13 @@ export default function AttendanceHistory() {
                     Reset
                   </button>
 
+                  {/* Refresh from DB */}
+                  <button onClick={fetchAttendance}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
+                    <MdRefresh className="w-4 h-4 text-blue-400"/>
+                    Reload
+                  </button>
+
                   {/* Export */}
                   <button onClick={exportCSV}
                     className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all ml-auto">
@@ -326,98 +347,122 @@ export default function AttendanceHistory() {
 
               {/* Table */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-100">
-                      {['#', 'Student', 'Student ID', 'Class', 'Date', 'Time In', 'Status', 'Action'].map(h => (
-                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.map((r, i) => (
-                      <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
-                        <td className="px-4 py-3 text-xs text-gray-400">
-                          {(currentPage - 1) * perPage + i + 1}
-                        </td>
 
-                        {/* Student */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                              <span className="text-blue-600 font-bold text-xs">
-                                {r.studentName.charAt(0)}
+                {/* Loading State */}
+                {loading && (
+                  <div className="text-center py-16">
+                    <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3"/>
+                    <p className="text-gray-400 text-sm">Loading records...</p>
+                  </div>
+                )}
+
+                {/* Error State */}
+                {!loading && error && (
+                  <div className="text-center py-16">
+                    <MdCancel className="w-12 h-12 text-red-200 mx-auto mb-3"/>
+                    <p className="text-red-400 font-medium">{error}</p>
+                    <button onClick={fetchAttendance}
+                      className="mt-3 text-xs text-blue-500 hover:underline">
+                      Try Again
+                    </button>
+                  </div>
+                )}
+
+                {/* Table Content */}
+                {!loading && !error && (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b border-gray-100">
+                        {['#', 'Student', 'Student ID', 'Class', 'Date', 'Time In', 'Status', 'Action'].map(h => (
+                          <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map((r, i) => (
+                        <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
+                          <td className="px-4 py-3 text-xs text-gray-400">
+                            {(currentPage - 1) * perPage + i + 1}
+                          </td>
+
+                          {/* Student */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 font-bold text-xs">
+                                  {(r.studentName || '?').charAt(0)}
+                                </span>
+                              </div>
+                              <span className="text-sm font-medium text-gray-800 whitespace-nowrap">
+                                {r.studentName || '—'}
                               </span>
                             </div>
-                            <span className="text-sm font-medium text-gray-800 whitespace-nowrap">
-                              {r.studentName}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
+                              {r.studentId || '—'}
                             </span>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td className="px-4 py-3">
-                          <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-1 rounded-lg">
-                            {r.studentId}
-                          </span>
-                        </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
+                              {r.class || '—'}
+                            </span>
+                          </td>
 
-                        <td className="px-4 py-3">
-                          <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 px-2 py-1 rounded-lg">
-                            {r.class}
-                          </span>
-                        </td>
+                          <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{r.date}</td>
 
-                        <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{r.date}</td>
-
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 text-xs text-gray-500">
-                            <MdAccessTime className="w-3.5 h-3.5"/>
-                            {r.timeIn}
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-3">
-                          {editRecord === r.id ? (
-                            <div className="flex gap-1">
-                              {['Present', 'Late', 'Absent'].map(s => (
-                                <button key={s}
-                                  onClick={() => handleStatusChange(r.id, s)}
-                                  className={`text-xs px-2 py-1 rounded-lg border transition-all
-                                    ${s === 'Present' ? 'bg-green-50 text-green-600 border-green-100 hover:bg-green-100'
-                                    : s === 'Late' ? 'bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100'
-                                    : 'bg-red-50 text-red-500 border-red-100 hover:bg-red-100'}`}>
-                                  {s}
-                                </button>
-                              ))}
-                              <button onClick={() => setEditRecord(null)}
-                                className="p-1 text-gray-400 hover:bg-gray-100 rounded-lg">
-                                <MdClose className="w-3.5 h-3.5"/>
-                              </button>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1 text-xs text-gray-500">
+                              <MdAccessTime className="w-3.5 h-3.5"/>
+                              {r.timeIn || '--'}
                             </div>
-                          ) : (
-                            <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium ${statusColor(r.status)}`}>
-                              {statusIcon(r.status)}
-                              {r.status}
-                            </span>
-                          )}
-                        </td>
+                          </td>
 
-                        {/* Action */}
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => setEditRecord(editRecord === r.id ? null : r.id)}
-                            className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all border border-transparent hover:border-blue-100">
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          {/* Status */}
+                          <td className="px-4 py-3">
+                            {editRecord === r.id ? (
+                              <div className="flex gap-1">
+                                {['Present', 'Late', 'Absent'].map(s => (
+                                  <button key={s}
+                                    onClick={() => handleStatusChange(r.id, s)}
+                                    className={`text-xs px-2 py-1 rounded-lg border transition-all
+                                      ${s === 'Present' ? 'bg-green-50 text-green-600 border-green-100 hover:bg-green-100'
+                                      : s === 'Late' ? 'bg-yellow-50 text-yellow-600 border-yellow-100 hover:bg-yellow-100'
+                                      : 'bg-red-50 text-red-500 border-red-100 hover:bg-red-100'}`}>
+                                    {s}
+                                  </button>
+                                ))}
+                                <button onClick={() => setEditRecord(null)}
+                                  className="p-1 text-gray-400 hover:bg-gray-100 rounded-lg">
+                                  <MdClose className="w-3.5 h-3.5"/>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium ${statusColor(r.status)}`}>
+                                {statusIcon(r.status)}
+                                {r.status}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Action */}
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setEditRecord(editRecord === r.id ? null : r.id)}
+                              className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-all border border-transparent hover:border-blue-100">
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
 
                 {/* Empty */}
-                {filtered.length === 0 && (
+                {!loading && !error && filtered.length === 0 && (
                   <div className="text-center py-16">
                     <MdHistory className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
                     <p className="text-gray-400 font-medium">No records found</p>
@@ -426,7 +471,7 @@ export default function AttendanceHistory() {
                 )}
 
                 {/* Pagination */}
-                {filtered.length > 0 && (
+                {!loading && !error && filtered.length > 0 && (
                   <div className="px-5 py-3.5 border-t border-gray-100 flex justify-between items-center">
                     <p className="text-xs text-gray-400">
                       Showing {Math.min((currentPage - 1) * perPage + 1, filtered.length)}–{Math.min(currentPage * perPage, filtered.length)} of {filtered.length} records
@@ -470,10 +515,9 @@ export default function AttendanceHistory() {
           {activeTab === 'analytics' && (
             <div className="space-y-5">
 
-              {/* Weekly Overview */}
               <div className="grid grid-cols-2 gap-5">
 
-                {/* Bar Chart */}
+                {/* Bar Chart — real weekly data */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-semibold text-gray-800 text-sm mb-4">
                     Weekly Attendance Overview
@@ -481,7 +525,7 @@ export default function AttendanceHistory() {
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={weeklyChartData} barSize={20}>
                       <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                      <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]}/>
+                      <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
                       <Tooltip/>
                       <Bar dataKey="present" name="Present" fill="#3b82f6" radius={[4, 4, 0, 0]}/>
                       <Bar dataKey="absent" name="Absent" fill="#f87171" radius={[4, 4, 0, 0]}/>
@@ -489,7 +533,7 @@ export default function AttendanceHistory() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Line Chart */}
+                {/* Line Chart — real monthly trend */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-semibold text-gray-800 text-sm mb-4">
                     Monthly Attendance Trend
@@ -497,7 +541,7 @@ export default function AttendanceHistory() {
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={monthlyTrend}>
                       <XAxis dataKey="week" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                      <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[60, 100]} tickFormatter={v => `${v}%`}/>
+                      <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`}/>
                       <Tooltip formatter={v => [`${v}%`, 'Rate']}/>
                       <Line type="monotone" dataKey="rate" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }}/>
                     </LineChart>
@@ -505,7 +549,7 @@ export default function AttendanceHistory() {
                 </div>
               </div>
 
-              {/* Class-wise Summary */}
+              {/* Class-wise Summary — from real records */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100">
                   <h3 className="font-semibold text-gray-800 text-sm">Class-wise Attendance Summary</h3>
@@ -519,7 +563,7 @@ export default function AttendanceHistory() {
                     </tr>
                   </thead>
                   <tbody>
-                    {['BCA - 1A', 'BCA - 2A', 'BCA - 2B', 'BCA - 3A', 'BCA - 3B'].map((cls, i) => {
+                    {uniqueClasses.filter(c => c !== 'All').map(cls => {
                       const clsRecords = records.filter(r => r.class === cls);
                       const present = clsRecords.filter(r => r.status === 'Present').length;
                       const absent = clsRecords.filter(r => r.status === 'Absent').length;
@@ -543,7 +587,7 @@ export default function AttendanceHistory() {
                               <div className="flex-1 h-1.5 bg-gray-100 rounded-full w-24">
                                 <div
                                   className={`h-1.5 rounded-full ${rate >= 85 ? 'bg-green-400' : rate >= 70 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                                  style={{ width: `${rate}%` }}></div>
+                                  style={{ width: `${rate}%` }}/>
                               </div>
                               <span className={`text-xs font-semibold ${rate >= 85 ? 'text-green-600' : rate >= 70 ? 'text-yellow-600' : 'text-red-500'}`}>
                                 {rate}%
@@ -558,6 +602,7 @@ export default function AttendanceHistory() {
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>
