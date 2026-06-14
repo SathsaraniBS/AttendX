@@ -8,7 +8,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# ✅ CORS fix — localhost:3000 allow
+# ✅ strict_slashes disable — redirect CORS error fix
+app.url_map.strict_slashes = False
+
+# ✅ CORS fix
 CORS(app, resources={
     r"/api/*": {
         "origins": ["http://localhost:3000"],

@@ -5,27 +5,37 @@ import {
   MdClass, MdPeople, MdBarChart,
   MdMenu, MdAdd, MdSearch, MdEdit, MdDelete,
   MdCalendarToday, MdClose, MdCheck, MdFilterList,
-  MdSchool, MdPerson, MdAccessTime
+  MdSchool, MdPerson, MdAccessTime, MdRefresh
 } from 'react-icons/md';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
-const API = 'http://localhost:5000/api/classes';
-const STORAGE_KEY = 'attendx_classes';
+const API = 'http://localhost:5000/api/classes/';
 
 // ==================== MODAL ====================
 function ClassModal({ isOpen, onClose, onSave, editData }) {
   const [form, setForm] = useState({
     name: '', code: '', teacher: '',
-    schedule: '', room: '', capacity: '', status: 'Active'
+    schedule: '', room: '', capacity: 40, status: 'Active'
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (editData) setForm(editData);
     else setForm({
       name: '', code: '', teacher: '',
-      schedule: '', room: '', capacity: '', status: 'Active'
+      schedule: '', room: '', capacity: 40, status: 'Active'
     });
   }, [editData, isOpen]);
+
+  const handleSave = async () => {
+    if (!form.name || !form.code || !form.teacher) {
+      alert('Name, Code, Teacher required!');
+      return;
+    }
+    setSaving(true);
+    await onSave(form);
+    setSaving(false);
+  };
 
   if (!isOpen) return null;
 
@@ -92,7 +102,7 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
               <label className="text-gray-700 text-sm font-medium mb-1 block">Capacity</label>
               <input type="number" placeholder="e.g. 40"
                 value={form.capacity}
-                onChange={e => setForm({...form, capacity: e.target.value})}
+                onChange={e => setForm({...form, capacity: parseInt(e.target.value) || 40})}
                 className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
             </div>
             <div>
@@ -113,16 +123,11 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
             className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm font-medium hover:bg-gray-50 transition-all">
             Cancel
           </button>
-          <button onClick={() => {
-            if (!form.name || !form.code || !form.teacher) {
-              alert('Name, Code, Teacher required!');
-              return;
-            }
-            onSave(form);
-          }}
-            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
-            <MdCheck className="w-4 h-4"/>
-            {editData ? 'Update Class' : 'Add Class'}
+          <button onClick={handleSave} disabled={saving}
+            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2">
+            {saving
+              ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Saving...</>
+              : <><MdCheck className="w-4 h-4"/> {editData ? 'Update Class' : 'Add Class'}</>}
           </button>
         </div>
       </div>
@@ -133,57 +138,48 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
 // ==================== CLASSES PAGE ====================
 export default function Classes() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [classes, setClasses] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [user, setUser]           = useState(null);
+  const [classes, setClasses]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [modalOpen, setModalOpen] = useState(false);
-  const [editData, setEditData] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [view, setView] = useState('grid');
-  const [toast, setToast] = useState(null);
+  const [editData, setEditData]   = useState(null);
+  const [deleteId, setDeleteId]   = useState(null);
+  const [view, setView]           = useState('grid');
+  const [toast, setToast]         = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token    = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token) { navigate('/'); return; }
     try {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
     } catch { navigate('/'); }
+
+    // ✅ localStorage old data clear — fresh API fetch
+    localStorage.removeItem('attendx_classes');
     fetchClasses();
   }, [navigate]);
 
-  // ✅ localStorage + API hybrid fetch
+  // ✅ API ෙලන් fetch — localStorage bypass
   const fetchClasses = async () => {
     setLoading(true);
-
     try {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) {
-        setClasses(JSON.parse(cached));
-        setLoading(false);
-      }
-    } catch { /* ignore */ }
-
-    try {
-      const res = await axios.get(API, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
-        timeout: 3000
+      const token = localStorage.getItem('token');
+      const res   = await axios.get(API, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
       });
       const data = res.data || [];
       setClasses(data);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {
-      const cached = localStorage.getItem(STORAGE_KEY);
-      if (cached) setClasses(JSON.parse(cached));
+      console.log(`✅ Loaded ${data.length} classes from API`);
+    } catch (err) {
+      console.error('❌ Classes API error:', err);
+      setClasses([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const saveToStorage = (data) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   };
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
@@ -202,77 +198,56 @@ export default function Classes() {
     return matchSearch && matchStatus;
   });
 
-  // ✅ Add / Edit — API + localStorage
+  // ✅ Add / Edit
   const handleSave = async (form) => {
     try {
+      const token = localStorage.getItem('token');
       if (editData) {
-        // Try API
-        try {
-          await axios.put(`${API}/${editData.id}`, form, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
-        } catch { /* API — local only */ }
-
-        const updated = classes.map(c =>
-          c.id === editData.id ? { ...c, ...form, id: editData.id } : c
-        );
-        setClasses(updated);
-        saveToStorage(updated);
+        await axios.put(`${API}/${editData.id}`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         showToast('Class updated successfully!');
       } else {
-        // Try API
-        let newClass;
-        try {
-          const res = await axios.post(API, form, {
-            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-          });
-          newClass = res.data;
-        } catch {
-          // Local create
-          newClass = {
-            ...form,
-            id: Date.now(),
-            enrolled: 0,
-            attendance: 0,
-            capacity: parseInt(form.capacity) || 0
-          };
-        }
-        const updated = [...classes, newClass];
-        setClasses(updated);
-        saveToStorage(updated);
+        await axios.post(API, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         showToast('Class added successfully!');
       }
+      await fetchClasses();
     } catch (err) {
+      console.error('Save error:', err);
       showToast('Something went wrong!', 'error');
     }
     setModalOpen(false);
     setEditData(null);
   };
 
-  // ✅ Delete — API + localStorage
+  // ✅ Delete
   const handleDelete = async (id) => {
     try {
+      const token = localStorage.getItem('token');
       await axios.delete(`${API}/${id}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
-    } catch { /* local only */ }
-
-    const updated = classes.filter(c => c.id !== id);
-    setClasses(updated);
-    saveToStorage(updated);
+      showToast('Class deleted!');
+      await fetchClasses();
+    } catch {
+      showToast('Delete failed!', 'error');
+    }
     setDeleteId(null);
-    showToast('Class deleted!');
   };
 
   const stats = [
-    { label: 'Total Classes', value: classes.length, icon: MdClass, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Active Classes', value: classes.filter(c => c.status === 'Active').length, icon: MdCheck, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Total Students', value: classes.reduce((a, c) => a + (c.enrolled || 0), 0), icon: MdPeople, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Avg Attendance', value: classes.length > 0 ? `${Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)}%` : '0%', icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Classes',   value: classes.length,                                      icon: MdClass,    color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Active Classes',  value: classes.filter(c => c.status === 'Active').length,   icon: MdCheck,    color: 'text-green-600',  bg: 'bg-green-50' },
+    { label: 'Total Students',  value: classes.reduce((a, c) => a + (c.enrolled || 0), 0), icon: MdPeople,   color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Avg Attendance',  value: classes.length > 0
+        ? `${Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)}%`
+        : '0%',                                                                             icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
   const statusColor = (s) => {
-    if (s === 'Active') return 'bg-green-50 text-green-600 border-green-100';
+    if (s === 'Active')   return 'bg-green-50 text-green-600 border-green-100';
     if (s === 'On Break') return 'bg-yellow-50 text-yellow-600 border-yellow-100';
     return 'bg-red-50 text-red-500 border-red-100';
   };
@@ -299,6 +274,11 @@ export default function Classes() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <button onClick={fetchClasses}
+              className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-all">
+              <MdRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/>
+              Refresh
+            </button>
             <div className="flex items-center gap-2 text-gray-500 text-sm border border-gray-200 rounded-lg px-3 py-1.5">
               <MdCalendarToday className="w-4 h-4"/>
               <span>{new Date().toLocaleDateString('en-US', {
@@ -374,10 +354,7 @@ export default function Classes() {
           {/* Loading */}
           {loading && (
             <div className="flex items-center justify-center py-16">
-              <svg className="w-8 h-8 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-              </svg>
+              <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"/>
             </div>
           )}
 
@@ -420,7 +397,7 @@ export default function Classes() {
                     </div>
                     <div className="w-full h-1.5 bg-gray-100 rounded-full">
                       <div className="h-1.5 bg-blue-400 rounded-full transition-all"
-                        style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}></div>
+                        style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}/>
                     </div>
 
                     <div className="flex justify-between items-center text-xs text-gray-500">
@@ -431,7 +408,7 @@ export default function Classes() {
                     </div>
                     <div className="w-full h-1.5 bg-gray-100 rounded-full">
                       <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
-                        style={{ width: `${cls.attendance || 0}%` }}></div>
+                        style={{ width: `${cls.attendance || 0}%` }}/>
                     </div>
                   </div>
 
@@ -456,12 +433,6 @@ export default function Classes() {
                   <p className="text-gray-300 text-sm mt-1">
                     {classes.length === 0 ? 'Add your first class!' : 'Try adjusting your search'}
                   </p>
-                  {classes.length === 0 && (
-                    <button onClick={() => setModalOpen(true)}
-                      className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-xl mx-auto hover:bg-blue-600 transition-all">
-                      <MdAdd className="w-4 h-4"/> Add First Class
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -498,7 +469,7 @@ export default function Classes() {
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 bg-gray-100 rounded-full">
                             <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
-                              style={{ width: `${cls.attendance || 0}%` }}></div>
+                              style={{ width: `${cls.attendance || 0}%` }}/>
                           </div>
                           <span className={`text-xs font-medium ${(cls.attendance || 0) >= 85 ? 'text-green-600' : (cls.attendance || 0) >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
                             {cls.attendance || 0}%
@@ -552,9 +523,7 @@ export default function Classes() {
               <MdDelete className="w-7 h-7 text-red-500"/>
             </div>
             <h3 className="text-gray-800 font-semibold text-lg mb-2">Delete Class?</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              This action cannot be undone.
-            </p>
+            <p className="text-gray-400 text-sm mb-6">This action cannot be undone.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteId(null)}
                 className="flex-1 py-2.5 border border-gray-200 rounded-xl text-gray-500 text-sm hover:bg-gray-50">
@@ -572,7 +541,9 @@ export default function Classes() {
       {toast && (
         <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-sm font-medium z-50
           ${toast.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-900 text-white'}`}>
-          {toast.type === 'error' ? <MdClose className="w-4 h-4"/> : <MdCheck className="w-4 h-4 text-green-400"/>}
+          {toast.type === 'error'
+            ? <MdClose className="w-4 h-4"/>
+            : <MdCheck className="w-4 h-4 text-green-400"/>}
           {toast.msg}
         </div>
       )}
