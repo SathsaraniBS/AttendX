@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
@@ -9,7 +9,8 @@ import {
 } from 'react-icons/md';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
-const API = 'http://localhost:5000/api/classes/';
+const CLASSES_API  = 'http://localhost:5000/api/classes/';
+const STUDENTS_API = 'http://localhost:5000/api/students/';
 
 // ==================== MODAL ====================
 function ClassModal({ isOpen, onClose, onSave, editData }) {
@@ -138,16 +139,17 @@ function ClassModal({ isOpen, onClose, onSave, editData }) {
 // ==================== CLASSES PAGE ====================
 export default function Classes() {
   const navigate = useNavigate();
-  const [user, setUser]           = useState(null);
-  const [classes, setClasses]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
+  const [user, setUser]                 = useState(null);
+  const [classes, setClasses]           = useState([]);
+  const [students, setStudents]         = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [search, setSearch]             = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editData, setEditData]   = useState(null);
-  const [deleteId, setDeleteId]   = useState(null);
-  const [view, setView]           = useState('grid');
-  const [toast, setToast]         = useState(null);
+  const [modalOpen, setModalOpen]       = useState(false);
+  const [editData, setEditData]         = useState(null);
+  const [deleteId, setDeleteId]         = useState(null);
+  const [view, setView]                 = useState('grid');
+  const [toast, setToast]               = useState(null);
 
   useEffect(() => {
     const token    = localStorage.getItem('token');
@@ -157,30 +159,63 @@ export default function Classes() {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
     } catch { navigate('/'); }
 
-    // ✅ localStorage old data clear — fresh API fetch
     localStorage.removeItem('attendx_classes');
-    fetchClasses();
+    fetchAll();
   }, [navigate]);
 
-  // ✅ API ෙලන් fetch — localStorage bypass
-  const fetchClasses = async () => {
+  // ✅ Classes + Students parallel fetch
+  const fetchAll = useCallback(async () => {
     setLoading(true);
+    const token = localStorage.getItem('token');
+    const headers = { Authorization: `Bearer ${token}` };
+
     try {
-      const token = localStorage.getItem('token');
-      const res   = await axios.get(API, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000
+      const [classRes, studentRes] = await Promise.all([
+        axios.get(CLASSES_API,  { headers, timeout: 5000 }),
+        axios.get(STUDENTS_API, { headers, timeout: 5000 }),
+      ]);
+
+      const classData   = classRes.data   || [];
+      const studentData = studentRes.data || [];
+
+      setStudents(studentData);
+
+      // ✅ Real enrolled count from students API
+      const enriched = classData.map(cls => {
+        const enrolled = studentData.filter(
+          s => s.className === cls.name
+        ).length;
+
+        // ✅ Avg attendance from enrolled students
+        const enrolledStudents = studentData.filter(
+          s => s.className === cls.name
+        );
+        const avgAttendance = enrolledStudents.length > 0
+          ? Math.round(
+              enrolledStudents.reduce((sum, s) => sum + (s.attendance || 0), 0)
+              / enrolledStudents.length
+            )
+          : 0;
+
+        return {
+          ...cls,
+          enrolled,
+          attendance: avgAttendance,
+        };
       });
-      const data = res.data || [];
-      setClasses(data);
-      console.log(`✅ Loaded ${data.length} classes from API`);
+
+      setClasses(enriched);
+      // ✅ Save to localStorage for StudentList class dropdown
+      localStorage.setItem('attendx_classes', JSON.stringify(enriched));
+      console.log(`✅ Loaded ${enriched.length} classes, ${studentData.length} students`);
+
     } catch (err) {
-      console.error('❌ Classes API error:', err);
+      console.error('❌ Fetch error:', err);
       setClasses([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
@@ -201,19 +236,17 @@ export default function Classes() {
   // ✅ Add / Edit
   const handleSave = async (form) => {
     try {
-      const token = localStorage.getItem('token');
+      const token   = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+
       if (editData) {
-        await axios.put(`${API}/${editData.id}`, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(`${CLASSES_API}${editData.id}`, form, { headers });
         showToast('Class updated successfully!');
       } else {
-        await axios.post(API, form, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.post(CLASSES_API, form, { headers });
         showToast('Class added successfully!');
       }
-      await fetchClasses();
+      await fetchAll();
     } catch (err) {
       console.error('Save error:', err);
       showToast('Something went wrong!', 'error');
@@ -226,24 +259,28 @@ export default function Classes() {
   const handleDelete = async (id) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API}/${id}`, {
+      await axios.delete(`${CLASSES_API}${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showToast('Class deleted!');
-      await fetchClasses();
+      await fetchAll();
     } catch {
       showToast('Delete failed!', 'error');
     }
     setDeleteId(null);
   };
 
+  // ✅ Real stats from actual data
+  const totalEnrolled   = students.length;
+  const avgAttendance   = classes.length > 0
+    ? Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)
+    : 0;
+
   const stats = [
-    { label: 'Total Classes',   value: classes.length,                                      icon: MdClass,    color: 'text-blue-600',   bg: 'bg-blue-50' },
-    { label: 'Active Classes',  value: classes.filter(c => c.status === 'Active').length,   icon: MdCheck,    color: 'text-green-600',  bg: 'bg-green-50' },
-    { label: 'Total Students',  value: classes.reduce((a, c) => a + (c.enrolled || 0), 0), icon: MdPeople,   color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Avg Attendance',  value: classes.length > 0
-        ? `${Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)}%`
-        : '0%',                                                                             icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Total Classes',  value: classes.length,                                    icon: MdClass,    color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Active Classes', value: classes.filter(c => c.status === 'Active').length, icon: MdCheck,    color: 'text-green-600',  bg: 'bg-green-50' },
+    { label: 'Total Students', value: totalEnrolled,                                     icon: MdPeople,   color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Avg Attendance', value: `${avgAttendance}%`,                               icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
   const statusColor = (s) => {
@@ -274,7 +311,7 @@ export default function Classes() {
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={fetchClasses}
+            <button onClick={fetchAll}
               className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-all">
               <MdRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`}/>
               Refresh
@@ -361,70 +398,98 @@ export default function Classes() {
           {/* GRID VIEW */}
           {!loading && view === 'grid' && (
             <div className="grid grid-cols-3 gap-5">
-              {filtered.map(cls => (
-                <div key={cls.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-white font-bold text-base">{cls.name}</h3>
-                        <p className="text-blue-100 text-xs mt-0.5">{cls.code}</p>
+              {filtered.map(cls => {
+                // ✅ Real students in this class
+                const classStudents = students.filter(
+                  s => s.className === cls.name
+                );
+                return (
+                  <div key={cls.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-white font-bold text-base">{cls.name}</h3>
+                          <p className="text-blue-100 text-xs mt-0.5">{cls.code}</p>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full border font-medium bg-white ${statusColor(cls.status)}`}>
+                          {cls.status}
+                        </span>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full border font-medium bg-white ${statusColor(cls.status)}`}>
-                        {cls.status}
-                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-2.5">
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <MdPerson className="w-4 h-4 text-gray-400 flex-shrink-0"/>
+                        <span className="truncate">{cls.teacher}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <MdAccessTime className="w-4 h-4 text-gray-400 flex-shrink-0"/>
+                        <span className="truncate">{cls.schedule || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-600 text-sm">
+                        <MdSchool className="w-4 h-4 text-gray-400 flex-shrink-0"/>
+                        <span>{cls.room || '—'}</span>
+                      </div>
+
+                      {/* ✅ Real enrolled from students */}
+                      <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
+                        <span>Enrolled: {cls.enrolled || 0}/{cls.capacity || 0}</span>
+                        <span className="font-medium text-blue-500">
+                          {cls.capacity ? Math.round(((cls.enrolled || 0) / cls.capacity) * 100) : 0}% full
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                        <div className="h-1.5 bg-blue-400 rounded-full transition-all"
+                          style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}/>
+                      </div>
+
+                      {/* ✅ Real avg attendance */}
+                      <div className="flex justify-between items-center text-xs text-gray-500">
+                        <span>Avg Attendance</span>
+                        <span className={`font-bold ${cls.attendance >= 85 ? 'text-green-600' : cls.attendance >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                          {cls.attendance || 0}%
+                        </span>
+                      </div>
+                      <div className="w-full h-1.5 bg-gray-100 rounded-full">
+                        <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
+                          style={{ width: `${cls.attendance || 0}%` }}/>
+                      </div>
+
+                      {/* ✅ Student avatars preview */}
+                      {classStudents.length > 0 && (
+                        <div className="flex items-center gap-1 pt-1">
+                          {classStudents.slice(0, 5).map((s, i) => (
+                            <div key={i}
+                              className="w-6 h-6 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-blue-600 text-xs font-bold -ml-1 first:ml-0">
+                              {s.name?.charAt(0)}
+                            </div>
+                          ))}
+                          {classStudents.length > 5 && (
+                            <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-500 text-xs font-bold -ml-1">
+                              +{classStudents.length - 5}
+                            </div>
+                          )}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {classStudents.length} students
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex border-t border-gray-100">
+                      <button onClick={() => { setEditData(cls); setModalOpen(true); }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-blue-500 hover:bg-blue-50 transition-all font-medium">
+                        <MdEdit className="w-4 h-4"/> Edit
+                      </button>
+                      <div className="w-px bg-gray-100"/>
+                      <button onClick={() => setDeleteId(cls.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-red-400 hover:bg-red-50 transition-all font-medium">
+                        <MdDelete className="w-4 h-4"/> Delete
+                      </button>
                     </div>
                   </div>
-
-                  <div className="p-4 space-y-2.5">
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <MdPerson className="w-4 h-4 text-gray-400 flex-shrink-0"/>
-                      <span className="truncate">{cls.teacher}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <MdAccessTime className="w-4 h-4 text-gray-400 flex-shrink-0"/>
-                      <span className="truncate">{cls.schedule || '—'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600 text-sm">
-                      <MdSchool className="w-4 h-4 text-gray-400 flex-shrink-0"/>
-                      <span>{cls.room || '—'}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
-                      <span>Enrolled: {cls.enrolled || 0}/{cls.capacity || 0}</span>
-                      <span className="font-medium text-blue-500">
-                        {cls.capacity ? Math.round(((cls.enrolled || 0) / cls.capacity) * 100) : 0}% full
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                      <div className="h-1.5 bg-blue-400 rounded-full transition-all"
-                        style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}/>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>Avg Attendance</span>
-                      <span className={`font-bold ${(cls.attendance || 0) >= 85 ? 'text-green-600' : (cls.attendance || 0) >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
-                        {cls.attendance || 0}%
-                      </span>
-                    </div>
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full">
-                      <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
-                        style={{ width: `${cls.attendance || 0}%` }}/>
-                    </div>
-                  </div>
-
-                  <div className="flex border-t border-gray-100">
-                    <button onClick={() => { setEditData(cls); setModalOpen(true); }}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-blue-500 hover:bg-blue-50 transition-all font-medium">
-                      <MdEdit className="w-4 h-4"/> Edit
-                    </button>
-                    <div className="w-px bg-gray-100"/>
-                    <button onClick={() => setDeleteId(cls.id)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-3 text-xs text-red-400 hover:bg-red-50 transition-all font-medium">
-                      <MdDelete className="w-4 h-4"/> Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {filtered.length === 0 && (
                 <div className="col-span-3 bg-white rounded-xl border border-gray-100 p-16 text-center">
@@ -464,14 +529,19 @@ export default function Classes() {
                       <td className="px-4 py-3 text-sm text-gray-600">{cls.teacher}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{cls.schedule || '—'}</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{cls.room || '—'}</td>
-                      <td className="px-4 py-3 text-xs text-gray-600">{cls.enrolled || 0}/{cls.capacity || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-medium text-gray-700">
+                          {cls.enrolled || 0}
+                          <span className="text-gray-400">/{cls.capacity || 0}</span>
+                        </span>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 bg-gray-100 rounded-full">
                             <div className={`h-1.5 rounded-full ${attendanceColor(cls.attendance || 0)}`}
                               style={{ width: `${cls.attendance || 0}%` }}/>
                           </div>
-                          <span className={`text-xs font-medium ${(cls.attendance || 0) >= 85 ? 'text-green-600' : (cls.attendance || 0) >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
+                          <span className={`text-xs font-medium ${cls.attendance >= 85 ? 'text-green-600' : cls.attendance >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
                             {cls.attendance || 0}%
                           </span>
                         </div>
