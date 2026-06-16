@@ -441,7 +441,7 @@ export default function StudentList() {
     { label: 'Total Students', value: students.length, icon: MdPeople, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Active', value: students.filter(s => s.status === 'Active').length, icon: MdCheck, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Inactive / Suspended', value: students.filter(s => s.status !== 'Active').length, icon: MdClose, color: 'text-red-500', bg: 'bg-red-50' },
-    { label: 'Avg Attendance', value: students.length > 0 ? `${Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)}%` : '0%', icon: MdBarChart, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Avg Attendance (All Students)', value: students.length > 0 ? `${Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)}%` : '0%', icon: MdBarChart, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   const allClasses = [...new Set([

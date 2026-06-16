@@ -264,7 +264,7 @@ export default function Classes() {
     { label: 'Total Classes',  value: classes.length,                                    icon: MdClass,    color: 'text-blue-600',   bg: 'bg-blue-50' },
     { label: 'Active Classes', value: classes.filter(c => c.status === 'Active').length, icon: MdCheck,    color: 'text-green-600',  bg: 'bg-green-50' },
     { label: 'Total Students', value: totalEnrolled,                                     icon: MdPeople,   color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Avg Attendance', value: `${avgAttendance}%`,                               icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { label: 'Avg Attendance (Active Classes)', value: `${avgAttendance}%`,                               icon: MdBarChart, color: 'text-orange-600', bg: 'bg-orange-50' },
   ];
 
   const statusColor = (s) => {

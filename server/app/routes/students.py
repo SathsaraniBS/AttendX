@@ -9,7 +9,7 @@ def get_db():
     return psycopg2.connect(os.getenv('DATABASE_URL'))
 
 
-# ✅ Get all students
+# ✅ Get all students — attendance % calculated from real attendance table
 @students_bp.route('/', methods=['GET'])
 def get_students():
     try:
@@ -17,16 +17,34 @@ def get_students():
         cur = conn.cursor()
         cur.execute("""
             SELECT
-                id, name, student_id, email,
-                COALESCE(phone, '') AS phone,
-                COALESCE(class_name, '') AS class_name,
-                COALESCE(status, 'Active') AS status,
-                COALESCE(attendance, 0) AS attendance,
-                COALESCE(join_date::text, '') AS join_date,
-                photo_path,
-                CASE WHEN face_encoding IS NOT NULL
-                THEN true ELSE false END AS has_face
-            FROM students ORDER BY id ASC
+                s.id,
+                s.name,
+                s.student_id,
+                s.email,
+                COALESCE(s.phone, '')        AS phone,
+                COALESCE(s.class_name, '')   AS class_name,
+                COALESCE(s.status, 'Active') AS status,
+
+                -- ✅ Real attendance % from attendance table
+                -- students.attendance static field use කරන්නේ නෑ
+                ROUND(
+                    CASE
+                        WHEN COUNT(a.id) = 0 THEN 0
+                        ELSE
+                            COUNT(CASE WHEN a.status IN ('Present', 'Late') THEN 1 END)::numeric
+                            / COUNT(a.id) * 100
+                    END
+                ) AS attendance_pct,
+
+                COALESCE(s.join_date::text, '') AS join_date,
+                s.photo_path,
+                CASE WHEN s.face_encoding IS NOT NULL
+                     THEN true ELSE false END AS has_face
+
+            FROM students s
+            LEFT JOIN attendance a ON a.student_id = s.id
+            GROUP BY s.id
+            ORDER BY s.id ASC
         """)
         rows = cur.fetchall()
         students = []
@@ -39,7 +57,7 @@ def get_students():
                 'phone':      row[4] or '',
                 'className':  row[5] or '',
                 'status':     row[6] or 'Active',
-                'attendance': int(row[7]) if row[7] else 0,
+                'attendance': int(row[7]) if row[7] else 0,  # ✅ real % from attendance table
                 'joinDate':   row[8] or '',
                 'photo':      row[9] or None,
                 'hasFace':    row[10] or False,
@@ -131,23 +149,37 @@ def add_student():
         return jsonify({'error': str(e)}), 500
 
 
-# ✅ Get single student
+# ✅ Get single student — attendance % from attendance table
 @students_bp.route('/<int:student_id>', methods=['GET'])
 def get_student(student_id):
     try:
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, name, student_id, email,
-                   COALESCE(phone, '') AS phone,
-                   COALESCE(class_name, '') AS class_name,
-                   COALESCE(status, 'Active') AS status,
-                   COALESCE(attendance, 0) AS attendance,
-                   COALESCE(join_date::text, '') AS join_date,
-                   photo_path,
-                   CASE WHEN face_encoding IS NOT NULL
-                   THEN true ELSE false END AS has_face
-            FROM students WHERE id = %s
+            SELECT
+                s.id, s.name, s.student_id, s.email,
+                COALESCE(s.phone, '')        AS phone,
+                COALESCE(s.class_name, '')   AS class_name,
+                COALESCE(s.status, 'Active') AS status,
+
+                ROUND(
+                    CASE
+                        WHEN COUNT(a.id) = 0 THEN 0
+                        ELSE
+                            COUNT(CASE WHEN a.status IN ('Present', 'Late') THEN 1 END)::numeric
+                            / COUNT(a.id) * 100
+                    END
+                ) AS attendance_pct,
+
+                COALESCE(s.join_date::text, '') AS join_date,
+                s.photo_path,
+                CASE WHEN s.face_encoding IS NOT NULL
+                     THEN true ELSE false END AS has_face
+
+            FROM students s
+            LEFT JOIN attendance a ON a.student_id = s.id
+            WHERE s.id = %s
+            GROUP BY s.id
         """, (student_id,))
         row = cur.fetchone()
         cur.close()
