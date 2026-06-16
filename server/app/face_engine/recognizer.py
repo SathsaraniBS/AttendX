@@ -13,6 +13,12 @@ except ImportError:
     DEEPFACE_AVAILABLE = False
     print("⚠️ DeepFace not available")
 
+MODEL_NAME = "Facenet512"   # Facenet512, VGG-Face, OpenFace, DeepFace, ArcFace
+# ✅ correct threshold values (Facenet512 + cosine distance)
+# 0.30 = strict | 0.40 = normal | 0.50 = loose
+COSINE_THRESHOLD = 0.40      # cosine distance < 0.40 → same person
+EUCLIDEAN_THRESHOLD = 15.0   # Facenet512 euclidean fallback
+
 
 def encode_face_from_base64(image_base64: str):
     try:
@@ -30,8 +36,8 @@ def encode_face_from_base64(image_base64: str):
 
         result = DeepFace.represent(
             img_path=temp_path,
-            model_name='Facenet',
-            enforce_detection=True
+            model_name=MODEL_NAME,      # ✅ Facenet512
+            enforce_detection=True       
         )
 
         if os.path.exists(temp_path):
@@ -67,7 +73,7 @@ def verify_face(captured_base64: str, stored_encoding_json: str):
 
         captured_result = DeepFace.represent(
             img_path=temp_path,
-            model_name='Facenet',
+            model_name=MODEL_NAME,      
             enforce_detection=True
         )
 
@@ -75,30 +81,31 @@ def verify_face(captured_base64: str, stored_encoding_json: str):
             os.remove(temp_path)
 
         if not captured_result:
-            return False, "No face detected"
+            return False, "No face detected in camera"
 
         captured_embedding = np.array(captured_result[0]['embedding'])
         stored_embedding   = np.array(json.loads(stored_encoding_json))
 
-        # ✅ Euclidean distance
-        euclidean_distance = np.linalg.norm(
-            captured_embedding - stored_embedding
-        )
+        # ✅ Cosine distance (best method)
+        dot_product   = np.dot(captured_embedding, stored_embedding)
+        norm_captured = np.linalg.norm(captured_embedding)
+        norm_stored   = np.linalg.norm(stored_embedding)
+        cosine_sim    = dot_product / (norm_captured * norm_stored)
+        cosine_dist   = 1 - cosine_sim   # distance: 0 = same, 2 = opposite
 
-        # ✅ Cosine similarity
-        dot_product    = np.dot(captured_embedding, stored_embedding)
-        norm_captured  = np.linalg.norm(captured_embedding)
-        norm_stored    = np.linalg.norm(stored_embedding)
-        cosine_sim     = dot_product / (norm_captured * norm_stored)
-        confidence     = round(cosine_sim * 100, 1)
+        # ✅ Euclidean distance (backup check)
+        euclidean_dist = np.linalg.norm(captured_embedding - stored_embedding)
 
-        # ✅ Threshold — Facenet: < 10 = same person
-        threshold = 10
+        confidence = round(cosine_sim * 100, 1)
 
-        if euclidean_distance < threshold:
+        print(f"🔍 Cosine distance: {round(cosine_dist, 4)} (threshold: {COSINE_THRESHOLD})")
+        print(f"🔍 Euclidean distance: {round(euclidean_dist, 2)} (threshold: {EUCLIDEAN_THRESHOLD})")
+        print(f"🔍 Confidence: {confidence}%")
+
+        if cosine_dist < COSINE_THRESHOLD and euclidean_dist < EUCLIDEAN_THRESHOLD:
             return True, f"✅ Face verified! Confidence: {confidence}%"
         else:
-            return False, f"❌ Face not matched! Distance: {round(euclidean_distance, 2)}"
+            return False, f"❌ Face not matched! Confidence: {confidence}% (Need > {round((1 - COSINE_THRESHOLD) * 100)}%)"
 
     except Exception as e:
         if os.path.exists('temp_verify.jpg'):
