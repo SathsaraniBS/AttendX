@@ -180,29 +180,13 @@ export default function Classes() {
 
       setStudents(studentData);
 
-      // ✅ Real enrolled count from students API
-      const enriched = classData.map(cls => {
-        const enrolled = studentData.filter(
-          s => s.className === cls.name
-        ).length;
-
-        // ✅ Avg attendance from enrolled students
-        const enrolledStudents = studentData.filter(
-          s => s.className === cls.name
-        );
-        const avgAttendance = enrolledStudents.length > 0
-          ? Math.round(
-              enrolledStudents.reduce((sum, s) => sum + (s.attendance || 0), 0)
-              / enrolledStudents.length
-            )
-          : 0;
-
-        return {
-          ...cls,
-          enrolled,
-          attendance: avgAttendance,
-        };
-      });
+      // ✅ Use attendance directly from backend (already calculated from attendance table)
+      // enrolled count is also from backend — just add student avatars from studentData
+      const enriched = classData.map(cls => ({
+        ...cls,
+        // attendance & enrolled already come correctly from classes.py SQL
+        // we only need studentData here for the avatar preview
+      }));
 
       setClasses(enriched);
       // ✅ Save to localStorage for StudentList class dropdown
@@ -270,9 +254,9 @@ export default function Classes() {
     setDeleteId(null);
   };
 
-  // ✅ Real stats from actual data
-  const totalEnrolled   = students.length;
-  const avgAttendance   = classes.length > 0
+  // ✅ Stats from backend data (attendance already real from SQL)
+  const totalEnrolled = students.length;
+  const avgAttendance = classes.length > 0
     ? Math.round(classes.reduce((a, c) => a + (c.attendance || 0), 0) / classes.length)
     : 0;
 
@@ -399,10 +383,8 @@ export default function Classes() {
           {!loading && view === 'grid' && (
             <div className="grid grid-cols-3 gap-5">
               {filtered.map(cls => {
-                // ✅ Real students in this class
-                const classStudents = students.filter(
-                  s => s.className === cls.name
-                );
+                // Student avatars only — attendance comes from backend
+                const classStudents = students.filter(s => s.className === cls.name);
                 return (
                   <div key={cls.id} className="bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden">
                     <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
@@ -431,7 +413,7 @@ export default function Classes() {
                         <span>{cls.room || '—'}</span>
                       </div>
 
-                      {/* ✅ Real enrolled from students */}
+                      {/* Enrolled — from backend SQL (COUNT DISTINCT) */}
                       <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
                         <span>Enrolled: {cls.enrolled || 0}/{cls.capacity || 0}</span>
                         <span className="font-medium text-blue-500">
@@ -443,7 +425,7 @@ export default function Classes() {
                           style={{ width: `${cls.capacity ? Math.min(((cls.enrolled || 0) / cls.capacity) * 100, 100) : 0}%` }}/>
                       </div>
 
-                      {/* ✅ Real avg attendance */}
+                      {/* ✅ Avg Attendance — real % from attendance table via backend */}
                       <div className="flex justify-between items-center text-xs text-gray-500">
                         <span>Avg Attendance</span>
                         <span className={`font-bold ${cls.attendance >= 85 ? 'text-green-600' : cls.attendance >= 70 ? 'text-yellow-600' : 'text-gray-400'}`}>
@@ -455,7 +437,7 @@ export default function Classes() {
                           style={{ width: `${cls.attendance || 0}%` }}/>
                       </div>
 
-                      {/* ✅ Student avatars preview */}
+                      {/* Student avatars preview */}
                       {classStudents.length > 0 && (
                         <div className="flex items-center gap-1 pt-1">
                           {classStudents.slice(0, 5).map((s, i) => (

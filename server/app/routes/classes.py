@@ -24,7 +24,7 @@ def ensure_classes_table(cur):
     """)
 
 
-# ✅ Get all classes
+# ✅ Get all classes — avg_attendance calculated from real attendance table
 @classes_bp.route('/', methods=['GET'])
 def get_classes():
     try:
@@ -39,19 +39,35 @@ def get_classes():
             SELECT
                 c.id,
                 c.name,
-                COALESCE(c.code, '')     AS code,
-                COALESCE(c.teacher, '')  AS teacher,
-                COALESCE(c.schedule, '') AS schedule,
-                COALESCE(c.room, '')     AS room,
-                COALESCE(c.capacity, 40) AS capacity,
+                COALESCE(c.code, '')         AS code,
+                COALESCE(c.teacher, '')      AS teacher,
+                COALESCE(c.schedule, '')     AS schedule,
+                COALESCE(c.room, '')         AS room,
+                COALESCE(c.capacity, 40)     AS capacity,
                 COALESCE(c.status, 'Active') AS status,
                 COALESCE(c.created_at::text, '') AS created_at,
-                COUNT(s.id) AS enrolled
+
+                -- ✅ DISTINCT — attendance join නිසා duplicate වෙන්නේ නෑ
+                COUNT(DISTINCT s.id) AS enrolled,
+
+                -- ✅ Real avg attendance from attendance table
+                -- Present + Late දෙකම count කරනවා
+                ROUND(
+                    CASE
+                        WHEN COUNT(a.id) = 0 THEN 0
+                        ELSE
+                            COUNT(CASE WHEN a.status IN ('Present', 'Late') THEN 1 END)::numeric
+                            / COUNT(a.id) * 100
+                    END
+                ) AS avg_attendance
+
             FROM classes c
-            LEFT JOIN students s ON s.class_name = c.name
+            LEFT JOIN students   s ON s.class_name  = c.name
+            LEFT JOIN attendance a ON a.student_id  = s.id
             GROUP BY c.id
             ORDER BY c.id ASC
         """)
+
         rows    = cur.fetchall()
         classes = []
         for row in rows:
@@ -65,9 +81,10 @@ def get_classes():
                 'capacity':   row[6] or 40,
                 'status':     row[7] or 'Active',
                 'createdAt':  row[8] or '',
-                'enrolled':   int(row[9]) if row[9] else 0,
-                'attendance': 0,
+                'enrolled':   int(row[9])  if row[9]  else 0,
+                'attendance': int(row[10]) if row[10] else 0,  # ✅ real % (was hardcoded 0)
             })
+
         cur.close()
         conn.close()
         print(f"✅ Classes fetched: {len(classes)}")
