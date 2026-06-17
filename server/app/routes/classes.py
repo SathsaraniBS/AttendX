@@ -7,7 +7,6 @@ classes_bp = Blueprint('classes', __name__)
 def get_db():
     return psycopg2.connect(os.getenv('DATABASE_URL'))
 
-
 def ensure_classes_table(cur):
     cur.execute("""
         CREATE TABLE IF NOT EXISTS classes (
