@@ -14,85 +14,13 @@ import {
 import { FaBell, FaBellSlash } from 'react-icons/fa';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
-// ==================== SAMPLE NOTIFICATIONS ====================
-const generateNotifications = () => [
-  {
-    id: 1, type: 'warning', category: 'attendance',
-    title: 'Low Attendance Alert',
-    message: 'Eranga Bandara attendance dropped below 60%. Current rate: 30%',
-    time: '2 minutes ago', date: new Date().toISOString(),
-    read: false, student: 'Eranga Bandara', class: 'BCA-1A'
-  },
-  {
-    id: 2, type: 'success', category: 'attendance',
-    title: 'Attendance Marked Successfully',
-    message: '24 students marked present in BCA-2A for today.',
-    time: '15 minutes ago', date: new Date().toISOString(),
-    read: false, class: 'BCA-2A'
-  },
-  {
-    id: 3, type: 'info', category: 'system',
-    title: 'System Backup Completed',
-    message: 'Automatic database backup completed successfully. Size: 23.4 MB',
-    time: '1 hour ago', date: new Date().toISOString(),
-    read: false
-  },
-  {
-    id: 4, type: 'warning', category: 'attendance',
-    title: 'Low Attendance Alert',
-    message: 'Bandara Perera attendance dropped below 60%. Current rate: 45%',
-    time: '2 hours ago', date: new Date().toISOString(),
-    read: true, student: 'Bandara Perera', class: 'BCA-3A'
-  },
-  {
-    id: 5, type: 'success', category: 'student',
-    title: 'New Student Registered',
-    message: 'Kasun Perera (S2024009) has been successfully registered with face recognition.',
-    time: '3 hours ago', date: new Date().toISOString(),
-    read: true, student: 'Kasun Perera'
-  },
-  {
-    id: 6, type: 'error', category: 'system',
-    title: 'Camera Connection Failed',
-    message: 'Unable to connect to camera device. Please check the connection.',
-    time: '5 hours ago', date: new Date().toISOString(),
-    read: true
-  },
-  {
-    id: 7, type: 'info', category: 'report',
-    title: 'Daily Report Generated',
-    message: 'Daily attendance report for June 5, 2026 has been generated.',
-    time: '6 hours ago', date: new Date().toISOString(),
-    read: true
-  },
-  {
-    id: 8, type: 'warning', category: 'attendance',
-    title: 'Absent Students — BCA-2B',
-    message: '8 students were absent in BCA-2B today. Attendance rate: 75%',
-    time: 'Yesterday', date: new Date(Date.now() - 86400000).toISOString(),
-    read: true, class: 'BCA-2B'
-  },
-  {
-    id: 9, type: 'success', category: 'system',
-    title: 'System Update Available',
-    message: 'FRAS v2.1.0 is available. New features: improved face recognition accuracy.',
-    time: 'Yesterday', date: new Date(Date.now() - 86400000).toISOString(),
-    read: true
-  },
-  {
-    id: 10, type: 'info', category: 'student',
-    title: 'Student Profile Updated',
-    message: 'Amali Fernando profile and face data updated successfully.',
-    time: '2 days ago', date: new Date(Date.now() - 172800000).toISOString(),
-    read: true, student: 'Amali Fernando'
-  },
-];
-
 // ==================== NOTIFICATIONS PAGE ====================
 export default function Notifications() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [notifications, setNotifications] = useState(generateNotifications());
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -106,6 +34,36 @@ export default function Notifications() {
       if (userData && userData !== 'undefined') setUser(JSON.parse(userData));
     } catch { navigate('/'); }
   }, [navigate]);
+
+  // TODO: Replace with a real call once /api/notifications exists on the backend.
+  // Expected shape per notification:
+  // {
+  //   id, type: 'success'|'warning'|'error'|'info',
+  //   category: 'attendance'|'student'|'system'|'report',
+  //   title, message, time, date, read, student?, class?
+  // }
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/notifications', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load notifications');
+        const data = await res.json();
+        setNotifications(Array.isArray(data) ? data : data.notifications || []);
+      } catch (err) {
+        // Backend endpoint not available yet — show empty state instead of dummy data.
+        setNotifications([]);
+        setError(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
@@ -121,20 +79,24 @@ export default function Notifications() {
 
   const markRead = (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    // TODO: persist to backend, e.g. PATCH /api/notifications/:id { read: true }
   };
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    // TODO: persist to backend, e.g. POST /api/notifications/mark-all-read
   };
 
   const deleteNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (selected?.id === id) setSelected(null);
+    // TODO: persist to backend, e.g. DELETE /api/notifications/:id
   };
 
   const clearAll = () => {
     setNotifications([]);
     setSelected(null);
+    // TODO: persist to backend, e.g. DELETE /api/notifications
   };
 
   const typeConfig = {
@@ -253,6 +215,11 @@ export default function Notifications() {
 
                   {/* Actions */}
                   <div className="flex gap-2 ml-auto">
+                    <button onClick={() => window.location.reload()}
+                      className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
+                      <MdRefresh className="w-4 h-4"/>
+                      Refresh
+                    </button>
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
                         className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
@@ -260,22 +227,29 @@ export default function Notifications() {
                         Mark All Read
                       </button>
                     )}
-                    <button onClick={clearAll}
-                      className="flex items-center gap-1.5 px-3 py-2 border border-red-100 rounded-xl text-xs text-red-400 hover:bg-red-50 transition-all">
-                      <MdDeleteSweep className="w-4 h-4"/>
-                      Clear All
-                    </button>
+                    {notifications.length > 0 && (
+                      <button onClick={clearAll}
+                        className="flex items-center gap-1.5 px-3 py-2 border border-red-100 rounded-xl text-xs text-red-400 hover:bg-red-50 transition-all">
+                        <MdDeleteSweep className="w-4 h-4"/>
+                        Clear All
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Notifications List */}
               <div className="space-y-2">
-                {filtered.length > 0 ? (
+                {loading ? (
+                  <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-16 text-center">
+                    <MdRefresh className="w-10 h-10 text-gray-200 mx-auto mb-4 animate-spin"/>
+                    <p className="text-gray-400 font-medium">Loading notifications...</p>
+                  </div>
+                ) : filtered.length > 0 ? (
                   filtered.map(notification => {
-                    const config = typeConfig[notification.type];
+                    const config = typeConfig[notification.type] || typeConfig.info;
                     const Icon = config.icon;
-                    const catConfig = categoryConfig[notification.category];
+                    const catConfig = categoryConfig[notification.category] || categoryConfig.system;
                     const isSelected = selected?.id === notification.id;
 
                     return (
@@ -340,8 +314,14 @@ export default function Notifications() {
                 ) : (
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-16 text-center">
                     <FaBellSlash className="w-14 h-14 text-gray-200 mx-auto mb-4"/>
-                    <p className="text-gray-400 font-medium">No notifications found</p>
-                    <p className="text-gray-300 text-sm mt-1">Try adjusting your filters</p>
+                    <p className="text-gray-400 font-medium">
+                      {notifications.length === 0 ? 'No notifications yet' : 'No notifications found'}
+                    </p>
+                    <p className="text-gray-300 text-sm mt-1">
+                      {notifications.length === 0
+                        ? 'New alerts will appear here once the notifications service is connected.'
+                        : 'Try adjusting your filters'}
+                    </p>
                   </div>
                 )}
               </div>
