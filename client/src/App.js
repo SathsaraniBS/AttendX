@@ -3,7 +3,7 @@ import Navbar from './components/Navbar';
 
 // Admin Pages
 import Login from './pages/Login';
-import Register from './pages/Register';
+// import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import LiveAttendance from './pages/LiveAttendance';
 import AttendanceHistory from './pages/attendance/AttendanceHistory';
@@ -31,7 +31,7 @@ function App() {
 
         {/* ===== ADMIN ROUTES ===== */}
         <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        {/* <Route path="/register" element={<Register />} /> */}
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/live" element={<LiveAttendance />} />
