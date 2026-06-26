@@ -1,9 +1,9 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-// import Navbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
+import './App.css';
 
-// Admin Pages
+// ===== ADMIN PAGES =====
 import Login from './pages/Login';
-// import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import LiveAttendance from './pages/LiveAttendance';
 import AttendanceHistory from './pages/attendance/AttendanceHistory';
@@ -15,40 +15,66 @@ import Notifications from './pages/Notifications';
 import Backup from './pages/Backup';
 import Logs from './pages/Logs';
 
-// ✅ Student Pages
+// ===== STUDENT PAGES =====
 import StudentDashboard from './pages/students/StudentDashboard';
 import StudentAttendance from './pages/students/StudentAttendance';
 import StudentProfile from './pages/students/StudentProfile';
 import StudentMarkAttendance from './pages/students/StudentMarkAttendance';
 
-import './index.css';
-
 function App() {
   return (
     <Router>
-      {/* <Navbar /> */}
       <Routes>
 
-        {/* ===== ADMIN ROUTES ===== */}
+        {/* ===== PUBLIC ROUTE (Login only) ===== */}
         <Route path="/" element={<Login />} />
-        {/* <Route path="/register" element={<Register />} /> */}
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-        <Route path="/dashboard" element={<AdminDashboard />} />
-        <Route path="/live" element={<LiveAttendance />} />
-        <Route path="/attendance" element={<AttendanceHistory />} />
-        <Route path="/students" element={<StudentList />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/classes" element={<Classes />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/backup" element={<Backup />} />
-        <Route path="/logs" element={<Logs />} />
+
+        {/* ===== ADMIN ROUTES (admin only) ===== */}
+        <Route path="/admin-dashboard" element={
+          <ProtectedRoute adminOnly={true}><AdminDashboard /></ProtectedRoute>
+        } />
+        <Route path="/live" element={
+          <ProtectedRoute adminOnly={true}><LiveAttendance /></ProtectedRoute>
+        } />
+        <Route path="/attendance" element={
+          <ProtectedRoute adminOnly={true}><AttendanceHistory /></ProtectedRoute>
+        } />
+        <Route path="/students" element={
+          <ProtectedRoute adminOnly={true}><StudentList /></ProtectedRoute>
+        } />
+        <Route path="/reports" element={
+          <ProtectedRoute adminOnly={true}><Reports /></ProtectedRoute>
+        } />
+        <Route path="/classes" element={
+          <ProtectedRoute adminOnly={true}><Classes /></ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute adminOnly={true}><Settings /></ProtectedRoute>
+        } />
+        <Route path="/notifications" element={
+          <ProtectedRoute adminOnly={true}><Notifications /></ProtectedRoute>
+        } />
+        <Route path="/backup" element={
+          <ProtectedRoute adminOnly={true}><Backup /></ProtectedRoute>
+        } />
+        <Route path="/logs" element={
+          <ProtectedRoute adminOnly={true}><Logs /></ProtectedRoute>
+        } />
 
         {/* ===== STUDENT ROUTES ===== */}
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/student-attendance" element={<StudentAttendance />} />
-        <Route path="/student-profile" element={<StudentProfile />} />
-        <Route path="/student-mark-attendance" element={<StudentMarkAttendance />} />
+        <Route path="/student-dashboard" element={
+          <ProtectedRoute><StudentDashboard /></ProtectedRoute>
+        } />
+        <Route path="/student-attendance" element={
+          <ProtectedRoute><StudentAttendance /></ProtectedRoute>
+        } />
+        <Route path="/student-profile" element={
+          <ProtectedRoute><StudentProfile /></ProtectedRoute>
+        } />
+        <Route path="/student-mark-attendance" element={
+          <ProtectedRoute><StudentMarkAttendance /></ProtectedRoute>
+        } />
+
       </Routes>
     </Router>
   );
