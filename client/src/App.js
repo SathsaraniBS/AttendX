@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
+// import Navbar from './components/Navbar';
 
 // Admin Pages
 import Login from './pages/Login';
@@ -26,7 +26,7 @@ import './index.css';
 function App() {
   return (
     <Router>
-      <Navbar />
+      {/* <Navbar /> */}
       <Routes>
 
         {/* ===== ADMIN ROUTES ===== */}
