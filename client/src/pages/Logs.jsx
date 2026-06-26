@@ -1,111 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
-  MdLogout, MdMenu, MdCalendarToday,
-  MdSearch, MdFilterList, MdDownload,
-  MdRefresh, MdDelete, MdDeleteSweep,
-  MdPerson, MdSecurity, MdComputer,
-  MdLogin, MdLogout as MdLogoutIcon,
-  MdEdit, MdAdd, MdRemoveCircle,
+  MdDashboard, MdPeople, MdClass, MdBarChart,
+  MdMenu, MdCalendarToday,
+  MdSearch, MdDownload,
+  MdRefresh, MdDeleteSweep,
+  MdPerson, MdComputer,
   MdCheckCircle, MdError, MdWarning,
   MdInfo, MdChevronLeft, MdChevronRight,
   MdClose, MdCheck, MdAccessTime,
-  MdLocationOn, MdDevices
+  MdLocationOn, MdDevices, MdAssignment, MdHistory
 } from 'react-icons/md';
 import { FaUserShield, FaDatabase, FaCamera } from 'react-icons/fa';
-
-// ==================== SIDEBAR ====================
-const mainNav = [
-  { path: '/live', icon: MdVisibility, label: 'Live Attendance' },
-  { path: '/attendance', icon: MdHistory, label: 'Attendance History' },
-  { path: '/students', icon: MdPeople, label: 'Students' },
-  { path: '/classes', icon: MdClass, label: 'Classes' },
-  { path: '/reports', icon: MdBarChart, label: 'Attendance Reports' },
-];
-
-const settingsNav = [
-  { path: '/settings', icon: MdSettings, label: 'System Settings' },
-  { path: '/notifications', icon: MdNotifications, label: 'Notification' },
-  { path: '/backup', icon: MdBackup, label: 'Backup' },
-  { path: '/logs', icon: MdAssignment, label: 'Activity Logs' },
-];
-
-function Sidebar({ user, onLogout }) {
-  const location = useLocation();
-
-  const NavItem = ({ item }) => {
-    const Icon = item.icon;
-    const active = location.pathname === item.path;
-    return (
-      <Link to={item.path}
-        className={`flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 transition-all duration-200 text-sm
-          ${active ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-        <Icon className="w-5 h-5 flex-shrink-0"/>
-        <span>{item.label}</span>
-      </Link>
-    );
-  };
-
-  return (
-    <aside className="fixed top-0 left-0 h-screen w-56 bg-[#0f1729] flex flex-col z-50 overflow-y-auto">
-      <div className="px-4 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
-            <MdVisibility className="w-5 h-5 text-white"/>
-          </div>
-          <div>
-            <p className="text-white font-bold text-sm">FRAS</p>
-            <p className="text-gray-400 text-xs">Face Recognition</p>
-            <p className="text-gray-400 text-xs">Attendance System</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <Link to="/admin-dashboard"
-          className={`flex items-center gap-3 px-4 py-2.5 rounded-lg mx-2 transition-all text-sm
-            ${location.pathname === '/admin-dashboard' || location.pathname === '/dashboard'
-              ? 'bg-blue-600 text-white'
-              : 'text-gray-400 hover:bg-white/10 hover:text-white'}`}>
-          <MdDashboard className="w-5 h-5 flex-shrink-0"/>
-          <span>Dashboard</span>
-        </Link>
-      </div>
-
-      <div className="px-4 pt-4 pb-1">
-        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Main</p>
-      </div>
-      <nav className="space-y-0.5 pb-2">
-        {mainNav.map(item => <NavItem key={item.path} item={item}/>)}
-      </nav>
-
-      <div className="px-4 pt-4 pb-1">
-        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Settings</p>
-      </div>
-      <nav className="space-y-0.5 pb-2">
-        {settingsNav.map(item => <NavItem key={item.path} item={item}/>)}
-      </nav>
-
-      <div className="mt-auto border-t border-white/10 p-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-            {user?.name?.charAt(0) || 'A'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-medium truncate">{user?.name || 'Admin'}</p>
-            <p className="text-gray-400 text-xs">System Administrator</p>
-          </div>
-          <button onClick={onLogout} className="text-gray-400 hover:text-red-400 transition-all">
-            <MdLogout className="w-5 h-5"/>
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
+import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
 // ==================== SAMPLE LOG DATA ====================
 const generateLogs = () => {
@@ -152,8 +59,6 @@ export default function Logs() {
   const [search, setSearch] = useState('');
   const [filterLevel, setFilterLevel] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedLog, setSelectedLog] = useState(null);
   const [toast, setToast] = useState(null);
@@ -175,19 +80,19 @@ export default function Logs() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Filter
+  // ── Filter ────────────────────────────────────────────────
   const filtered = logs.filter(log => {
     const matchSearch =
       log.action.toLowerCase().includes(search.toLowerCase()) ||
       log.user.toLowerCase().includes(search.toLowerCase()) ||
       log.detail.toLowerCase().includes(search.toLowerCase());
     const matchLevel = filterLevel === 'all' || log.level === filterLevel;
-    const matchType = filterType === 'all' || log.type === filterType;
+    const matchType  = filterType  === 'all' || log.type  === filterType;
     return matchSearch && matchLevel && matchType;
   });
 
   const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const paginated  = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
   const clearLogs = () => {
     setLogs([]);
@@ -210,33 +115,37 @@ export default function Logs() {
     showToast('Logs exported!');
   };
 
+  // ── Config ────────────────────────────────────────────────
   const levelConfig = {
-    success: { icon: MdCheckCircle, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', badge: 'bg-green-100 text-green-700' },
-    error: { icon: MdError, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100', badge: 'bg-red-100 text-red-700' },
-    warning: { icon: MdWarning, color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700' },
-    info: { icon: MdInfo, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', badge: 'bg-blue-100 text-blue-700' },
+    success: { icon: MdCheckCircle, color: 'text-green-500',  bg: 'bg-green-50',  border: 'border-green-100',  badge: 'bg-green-100 text-green-700' },
+    error:   { icon: MdError,       color: 'text-red-500',    bg: 'bg-red-50',    border: 'border-red-100',    badge: 'bg-red-100 text-red-700' },
+    warning: { icon: MdWarning,     color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700' },
+    info:    { icon: MdInfo,        color: 'text-blue-500',   bg: 'bg-blue-50',   border: 'border-blue-100',   badge: 'bg-blue-100 text-blue-700' },
   };
 
   const typeConfig = {
-    auth: { icon: FaUserShield, color: 'text-purple-500', bg: 'bg-purple-50', label: 'Auth' },
-    student: { icon: MdPeople, color: 'text-blue-500', bg: 'bg-blue-50', label: 'Student' },
-    attendance: { icon: MdHistory, color: 'text-green-500', bg: 'bg-green-50', label: 'Attendance' },
-    system: { icon: MdComputer, color: 'text-gray-500', bg: 'bg-gray-50', label: 'System' },
-    camera: { icon: FaCamera, color: 'text-orange-500', bg: 'bg-orange-50', label: 'Camera' },
-    report: { icon: MdBarChart, color: 'text-indigo-500', bg: 'bg-indigo-50', label: 'Report' },
-    class: { icon: MdClass, color: 'text-teal-500', bg: 'bg-teal-50', label: 'Class' },
+    auth:       { icon: FaUserShield,  color: 'text-purple-500', bg: 'bg-purple-50', label: 'Auth' },
+    student:    { icon: MdPeople,      color: 'text-blue-500',   bg: 'bg-blue-50',   label: 'Student' },
+    attendance: { icon: MdHistory,     color: 'text-green-500',  bg: 'bg-green-50',  label: 'Attendance' },
+    system:     { icon: MdComputer,    color: 'text-gray-500',   bg: 'bg-gray-50',   label: 'System' },
+    camera:     { icon: FaCamera,      color: 'text-orange-500', bg: 'bg-orange-50', label: 'Camera' },
+    report:     { icon: MdBarChart,    color: 'text-indigo-500', bg: 'bg-indigo-50', label: 'Report' },
+    class:      { icon: MdClass,       color: 'text-teal-500',   bg: 'bg-teal-50',   label: 'Class' },
   };
 
   const stats = [
-    { label: 'Total Logs', value: logs.length, icon: MdAssignment, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Success', value: logs.filter(l => l.level === 'success').length, icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Warnings', value: logs.filter(l => l.level === 'warning').length, icon: MdWarning, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Errors', value: logs.filter(l => l.level === 'error').length, icon: MdError, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'Total Logs', value: logs.length,                                        icon: MdAssignment, color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Success',    value: logs.filter(l => l.level === 'success').length,     icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Warnings',   value: logs.filter(l => l.level === 'warning').length,     icon: MdWarning,    color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Errors',     value: logs.filter(l => l.level === 'error').length,       icon: MdError,      color: 'text-red-500',    bg: 'bg-red-50' },
   ];
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar user={user} onLogout={handleLogout}/>
+
+      {/* ✅ AdminSidebar — custom sidebar replace කළා */}
+      <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
 
@@ -285,7 +194,7 @@ export default function Logs() {
 
           <div className="flex gap-5">
 
-            {/* Left — Log List */}
+            {/* ── Left — Log List ── */}
             <div className="flex-1">
 
               {/* Toolbar */}
@@ -390,12 +299,8 @@ export default function Logs() {
                           </td>
 
                           <td className="px-4 py-3">
-                            <p className="text-sm font-medium text-gray-800 whitespace-nowrap">
-                              {log.action}
-                            </p>
-                            <p className="text-xs text-gray-400 truncate max-w-48 mt-0.5">
-                              {log.detail}
-                            </p>
+                            <p className="text-sm font-medium text-gray-800 whitespace-nowrap">{log.action}</p>
+                            <p className="text-xs text-gray-400 truncate max-w-48 mt-0.5">{log.detail}</p>
                           </td>
 
                           <td className="px-4 py-3">
@@ -408,9 +313,7 @@ export default function Logs() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                                <span className="text-blue-600 font-bold text-xs">
-                                  {log.user.charAt(0)}
-                                </span>
+                                <span className="text-blue-600 font-bold text-xs">{log.user.charAt(0)}</span>
                               </div>
                               <span className="text-xs text-gray-600">{log.user}</span>
                             </div>
@@ -476,7 +379,7 @@ export default function Logs() {
               </div>
             </div>
 
-            {/* Right — Detail Panel */}
+            {/* ── Right — Detail Panel ── */}
             <div className="w-72 flex-shrink-0">
 
               {selectedLog ? (
@@ -517,10 +420,10 @@ export default function Logs() {
                     <div className="space-y-3">
                       {[
                         { icon: MdAccessTime, label: 'Timestamp', value: selectedLog.timestamp },
-                        { icon: MdPerson, label: 'User', value: selectedLog.user },
+                        { icon: MdPerson,     label: 'User',      value: selectedLog.user },
                         { icon: MdLocationOn, label: 'IP Address', value: selectedLog.ip },
-                        { icon: MdDevices, label: 'Browser', value: selectedLog.browser },
-                        { icon: MdComputer, label: 'OS', value: selectedLog.os },
+                        { icon: MdDevices,    label: 'Browser',   value: selectedLog.browser },
+                        { icon: MdComputer,   label: 'OS',        value: selectedLog.os },
                       ].map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -540,13 +443,16 @@ export default function Logs() {
                     {/* Log ID */}
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-1">Log ID</p>
-                      <p className="text-xs font-mono text-gray-600">LOG-{String(selectedLog.id).padStart(6, '0')}</p>
+                      <p className="text-xs font-mono text-gray-600">
+                        LOG-{String(selectedLog.id).padStart(6, '0')}
+                      </p>
                     </div>
                   </div>
                 </div>
-              ) : (
 
+              ) : (
                 <div className="space-y-4">
+
                   {/* Empty Detail */}
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center">
                     <MdAssignment className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
