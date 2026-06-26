@@ -1,20 +1,19 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
-  MdLogout, MdMenu, MdCalendarToday,
+  MdSettings, MdMenu, MdCalendarToday,
   MdEdit, MdCheck, MdClose, MdSave,
   MdSecurity, MdPerson, MdEmail, MdPhone,
-  MdLock, MdColorLens, MdStorage,
+  MdLock, MdStorage,
   MdNotificationsActive, MdLanguage,
   MdCameraAlt, MdBusiness, MdInfo,
   MdRefresh, MdDelete, MdDownload,
-  MdVisibilityOff, MdWarning
+  MdVisibility, MdVisibilityOff, MdWarning,
+  MdBackup, MdLogout
 } from 'react-icons/md';
 import { FaShieldAlt, FaDatabase } from 'react-icons/fa';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
+
 // ==================== SETTINGS PAGE ====================
 export default function Settings() {
   const navigate = useNavigate();
@@ -70,7 +69,7 @@ export default function Settings() {
     reportEmail: 'admin@attendx.com',
   });
 
-  // Database Settings
+  // Database Info (read-only)
   const [dbInfo] = useState({
     host: 'localhost',
     port: '5432',
@@ -88,7 +87,11 @@ export default function Settings() {
       if (userData && userData !== 'undefined') {
         const parsed = JSON.parse(userData);
         setUser(parsed);
-        setProfile(p => ({ ...p, name: parsed.name || 'Admin', email: parsed.email || 'admin@attendx.com' }));
+        setProfile(p => ({
+          ...p,
+          name: parsed.name || 'Admin',
+          email: parsed.email || 'admin@attendx.com'
+        }));
       }
     } catch { navigate('/'); }
   }, [navigate]);
@@ -102,7 +105,9 @@ export default function Settings() {
 
   const saveProfile = () => {
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    localStorage.setItem('user', JSON.stringify({ ...userData, name: profile.name, email: profile.email }));
+    localStorage.setItem('user', JSON.stringify({
+      ...userData, name: profile.name, email: profile.email
+    }));
     setUser(u => ({ ...u, name: profile.name }));
     showToast('Profile updated successfully!');
   };
@@ -116,13 +121,28 @@ export default function Settings() {
   };
 
   const tabs = [
-    { key: 'profile', label: 'Profile', icon: MdPerson },
-    { key: 'security', label: 'Security', icon: FaShieldAlt },
-    { key: 'system', label: 'System', icon: MdSettings },
-    { key: 'camera', label: 'Camera / AI', icon: MdCameraAlt },
+    { key: 'profile',       label: 'Profile',       icon: MdPerson },
+    { key: 'security',      label: 'Security',      icon: FaShieldAlt },
+    { key: 'system',        label: 'System',        icon: MdSettings },
+    { key: 'camera',        label: 'Camera / AI',   icon: MdCameraAlt },
     { key: 'notifications', label: 'Notifications', icon: MdNotificationsActive },
-    { key: 'database', label: 'Database', icon: FaDatabase },
+    { key: 'database',      label: 'Database',      icon: FaDatabase },
   ];
+
+  // ── Toggle Switch Component ──────────────────────────────
+  const Toggle = ({ value, onChange }) => (
+    <button
+      onClick={onChange}
+      className={`w-11 h-6 rounded-full transition-all duration-300 relative flex-shrink-0
+        ${value ? 'bg-blue-500' : 'bg-gray-200'}`}>
+      <span
+        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300"
+        style={{ left: value ? '22px' : '2px' }}/>
+    </button>
+  );
+
+  // ── Input Field Component ────────────────────────────────
+  const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all";
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -155,7 +175,7 @@ export default function Settings() {
         <div className="p-6">
           <div className="flex gap-6">
 
-            {/* Side Tabs */}
+            {/* ── Side Tabs ── */}
             <div className="w-48 flex-shrink-0">
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 {tabs.map(tab => {
@@ -175,10 +195,10 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Content */}
+            {/* ── Content ── */}
             <div className="flex-1 space-y-5">
 
-              {/* PROFILE TAB */}
+              {/* ===== PROFILE TAB ===== */}
               {activeTab === 'profile' && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -204,44 +224,24 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    {/* Form */}
+                    {/* Form Fields */}
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdPerson className="w-4 h-4 text-gray-400"/>
-                          Full Name
-                        </label>
-                        <input type="text" value={profile.name}
-                          onChange={e => setProfile({...profile, name: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
-                      </div>
-                      <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdEmail className="w-4 h-4 text-gray-400"/>
-                          Email Address
-                        </label>
-                        <input type="email" value={profile.email}
-                          onChange={e => setProfile({...profile, email: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
-                      </div>
-                      <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdPhone className="w-4 h-4 text-gray-400"/>
-                          Phone Number
-                        </label>
-                        <input type="tel" value={profile.phone}
-                          onChange={e => setProfile({...profile, phone: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
-                      </div>
-                      <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdBusiness className="w-4 h-4 text-gray-400"/>
-                          Organization
-                        </label>
-                        <input type="text" value={profile.organization}
-                          onChange={e => setProfile({...profile, organization: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
-                      </div>
+                      {[
+                        { label: 'Full Name', key: 'name', type: 'text', icon: MdPerson },
+                        { label: 'Email Address', key: 'email', type: 'email', icon: MdEmail },
+                        { label: 'Phone Number', key: 'phone', type: 'tel', icon: MdPhone },
+                        { label: 'Organization', key: 'organization', type: 'text', icon: MdBusiness },
+                      ].map(({ label, key, type, icon: Icon }) => (
+                        <div key={key}>
+                          <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1 block">
+                            <Icon className="w-4 h-4 text-gray-400"/>
+                            {label}
+                          </label>
+                          <input type={type} value={profile[key]}
+                            onChange={e => setProfile({ ...profile, [key]: e.target.value })}
+                            className={inputCls}/>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="flex justify-end">
@@ -255,7 +255,7 @@ export default function Settings() {
                 </div>
               )}
 
-              {/* SECURITY TAB */}
+              {/* ===== SECURITY TAB ===== */}
               {activeTab === 'security' && (
                 <div className="space-y-5">
 
@@ -276,12 +276,14 @@ export default function Settings() {
                             type={showCurrentPassword ? 'text' : 'password'}
                             placeholder="Enter current password"
                             value={passwords.current}
-                            onChange={e => setPasswords({...passwords, current: e.target.value})}
+                            onChange={e => setPasswords({ ...passwords, current: e.target.value })}
                             className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
                           <button type="button"
                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            {showCurrentPassword ? <MdVisibility className="w-4 h-4"/> : <MdVisibilityOff className="w-4 h-4"/>}
+                            {showCurrentPassword
+                              ? <MdVisibility className="w-4 h-4"/>
+                              : <MdVisibilityOff className="w-4 h-4"/>}
                           </button>
                         </div>
                       </div>
@@ -296,12 +298,14 @@ export default function Settings() {
                               type={showNewPassword ? 'text' : 'password'}
                               placeholder="New password"
                               value={passwords.newPass}
-                              onChange={e => setPasswords({...passwords, newPass: e.target.value})}
+                              onChange={e => setPasswords({ ...passwords, newPass: e.target.value })}
                               className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
                             <button type="button"
                               onClick={() => setShowNewPassword(!showNewPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                              {showNewPassword ? <MdVisibility className="w-4 h-4"/> : <MdVisibilityOff className="w-4 h-4"/>}
+                              {showNewPassword
+                                ? <MdVisibility className="w-4 h-4"/>
+                                : <MdVisibilityOff className="w-4 h-4"/>}
                             </button>
                           </div>
                         </div>
@@ -315,29 +319,31 @@ export default function Settings() {
                               type={showConfirmPassword ? 'text' : 'password'}
                               placeholder="Confirm password"
                               value={passwords.confirm}
-                              onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                              onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
                               className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
                             <button type="button"
                               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                              {showConfirmPassword ? <MdVisibility className="w-4 h-4"/> : <MdVisibilityOff className="w-4 h-4"/>}
+                              {showConfirmPassword
+                                ? <MdVisibility className="w-4 h-4"/>
+                                : <MdVisibilityOff className="w-4 h-4"/>}
                             </button>
                           </div>
                         </div>
                       </div>
 
-                      {/* Password strength */}
+                      {/* Password Strength */}
                       {passwords.newPass && (
                         <div>
                           <p className="text-xs text-gray-500 mb-1">Password Strength</p>
                           <div className="flex gap-1">
-                            {[1,2,3,4].map(i => (
+                            {[1, 2, 3, 4].map(i => (
                               <div key={i} className={`flex-1 h-1.5 rounded-full ${
                                 passwords.newPass.length >= i * 3
                                   ? passwords.newPass.length >= 10 ? 'bg-green-400'
                                     : passwords.newPass.length >= 7 ? 'bg-yellow-400'
                                     : 'bg-red-400'
-                                  : 'bg-gray-100'}`}></div>
+                                  : 'bg-gray-100'}`}/>
                             ))}
                           </div>
                           <p className="text-xs mt-1 text-gray-400">
@@ -366,15 +372,13 @@ export default function Settings() {
                     </div>
                     <div className="p-6 space-y-4">
                       {[
-                        { label: 'Current Session', value: 'Active — Chrome, Windows', status: 'green' },
-                        { label: 'Last Login', value: new Date().toLocaleString(), status: 'blue' },
-                        { label: 'Account Status', value: 'Active', status: 'green' },
+                        { label: 'Current Session', value: 'Active — Chrome, Windows', color: 'text-green-600' },
+                        { label: 'Last Login',       value: new Date().toLocaleString(), color: 'text-blue-600' },
+                        { label: 'Account Status',   value: 'Active',                   color: 'text-green-600' },
                       ].map((item, i) => (
                         <div key={i} className="flex justify-between items-center py-3 border-b border-gray-50 last:border-0">
                           <span className="text-sm text-gray-500">{item.label}</span>
-                          <span className={`text-sm font-medium ${item.status === 'green' ? 'text-green-600' : 'text-blue-600'}`}>
-                            {item.value}
-                          </span>
+                          <span className={`text-sm font-medium ${item.color}`}>{item.value}</span>
                         </div>
                       ))}
                       <button
@@ -388,7 +392,7 @@ export default function Settings() {
                 </div>
               )}
 
-              {/* SYSTEM TAB */}
+              {/* ===== SYSTEM TAB ===== */}
               {activeTab === 'system' && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -399,21 +403,19 @@ export default function Settings() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdBusiness className="w-4 h-4 text-gray-400"/>
-                          System Name
+                        <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1 block">
+                          <MdBusiness className="w-4 h-4 text-gray-400"/> System Name
                         </label>
                         <input type="text" value={system.systemName}
-                          onChange={e => setSystem({...system, systemName: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
+                          onChange={e => setSystem({ ...system, systemName: e.target.value })}
+                          className={inputCls}/>
                       </div>
                       <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdLanguage className="w-4 h-4 text-gray-400"/>
-                          Language
+                        <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1 block">
+                          <MdLanguage className="w-4 h-4 text-gray-400"/> Language
                         </label>
                         <select value={system.language}
-                          onChange={e => setSystem({...system, language: e.target.value})}
+                          onChange={e => setSystem({ ...system, language: e.target.value })}
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                           <option>English</option>
                           <option>Sinhala</option>
@@ -423,7 +425,7 @@ export default function Settings() {
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Timezone</label>
                         <select value={system.timezone}
-                          onChange={e => setSystem({...system, timezone: e.target.value})}
+                          onChange={e => setSystem({ ...system, timezone: e.target.value })}
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                           <option>Asia/Colombo</option>
                           <option>Asia/Kolkata</option>
@@ -433,7 +435,7 @@ export default function Settings() {
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Date Format</label>
                         <select value={system.dateFormat}
-                          onChange={e => setSystem({...system, dateFormat: e.target.value})}
+                          onChange={e => setSystem({ ...system, dateFormat: e.target.value })}
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                           <option>DD/MM/YYYY</option>
                           <option>MM/DD/YYYY</option>
@@ -442,7 +444,7 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    {/* Attendance Time Settings */}
+                    {/* Attendance Time */}
                     <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
                       <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                         <MdCalendarToday className="w-4 h-4 text-blue-500"/>
@@ -452,50 +454,46 @@ export default function Settings() {
                         <div>
                           <label className="text-gray-600 text-xs font-medium mb-1 block">Start Time</label>
                           <input type="time" value={system.attendanceStartTime}
-                            onChange={e => setSystem({...system, attendanceStartTime: e.target.value})}
+                            onChange={e => setSystem({ ...system, attendanceStartTime: e.target.value })}
                             className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white"/>
                         </div>
                         <div>
                           <label className="text-gray-600 text-xs font-medium mb-1 block">End Time</label>
                           <input type="time" value={system.attendanceEndTime}
-                            onChange={e => setSystem({...system, attendanceEndTime: e.target.value})}
+                            onChange={e => setSystem({ ...system, attendanceEndTime: e.target.value })}
                             className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white"/>
                         </div>
                         <div>
                           <label className="text-gray-600 text-xs font-medium mb-1 block">Late Threshold (min)</label>
                           <input type="number" value={system.lateThreshold}
-                            onChange={e => setSystem({...system, lateThreshold: e.target.value})}
+                            onChange={e => setSystem({ ...system, lateThreshold: e.target.value })}
                             className="w-full px-3 py-2 border border-blue-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white"/>
                         </div>
                       </div>
                     </div>
 
-                    {/* Toggle */}
+                    {/* Auto Mark Absent Toggle */}
                     <div className="flex items-center justify-between py-3 border border-gray-100 rounded-xl px-4">
                       <div>
                         <p className="text-sm font-medium text-gray-700">Auto Mark Absent</p>
                         <p className="text-xs text-gray-400">Automatically mark absent after end time</p>
                       </div>
-                      <button
-                        onClick={() => setSystem(s => ({...s, autoMarkAbsent: !s.autoMarkAbsent}))}
-                        className={`w-11 h-6 rounded-full transition-all duration-300 relative ${system.autoMarkAbsent ? 'bg-blue-500' : 'bg-gray-200'}`}>
-                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300 ${system.autoMarkAbsent ? 'left-5.5 translate-x-0.5' : 'left-0.5'}`}
-                          style={{ left: system.autoMarkAbsent ? '22px' : '2px' }}></span>
-                      </button>
+                      <Toggle
+                        value={system.autoMarkAbsent}
+                        onChange={() => setSystem(s => ({ ...s, autoMarkAbsent: !s.autoMarkAbsent }))}/>
                     </div>
 
                     <div className="flex justify-end">
                       <button onClick={() => showToast('System settings saved!')}
                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all">
-                        <MdSave className="w-4 h-4"/>
-                        Save Settings
+                        <MdSave className="w-4 h-4"/> Save Settings
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* CAMERA TAB */}
+              {/* ===== CAMERA TAB ===== */}
               {activeTab === 'camera' && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -508,23 +506,21 @@ export default function Settings() {
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Recognition Interval (seconds)</label>
                         <input type="number" value={camera.recognitionInterval}
-                          onChange={e => setCamera({...camera, recognitionInterval: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                          min="1" max="10"/>
+                          onChange={e => setCamera({ ...camera, recognitionInterval: e.target.value })}
+                          className={inputCls} min="1" max="10"/>
                         <p className="text-xs text-gray-400 mt-1">Face scan කරන frequency</p>
                       </div>
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Confidence Threshold</label>
                         <input type="number" value={camera.confidenceThreshold}
-                          onChange={e => setCamera({...camera, confidenceThreshold: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                          min="0.1" max="1" step="0.1"/>
+                          onChange={e => setCamera({ ...camera, confidenceThreshold: e.target.value })}
+                          className={inputCls} min="0.1" max="1" step="0.1"/>
                         <p className="text-xs text-gray-400 mt-1">0.1 (low) - 1.0 (high accuracy)</p>
                       </div>
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Camera Resolution</label>
                         <select value={camera.cameraResolution}
-                          onChange={e => setCamera({...camera, cameraResolution: e.target.value})}
+                          onChange={e => setCamera({ ...camera, cameraResolution: e.target.value })}
                           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                           <option>640x480</option>
                           <option>1280x720</option>
@@ -533,23 +529,20 @@ export default function Settings() {
                       </div>
                     </div>
 
-                    {/* Toggles */}
+                    {/* Camera Toggles */}
                     <div className="space-y-3">
                       {[
                         { key: 'autoCapture', label: 'Auto Capture', desc: 'Automatically capture and recognize faces' },
-                        { key: 'savePhotos', label: 'Save Captured Photos', desc: 'Save recognized face photos to database' },
+                        { key: 'savePhotos',  label: 'Save Captured Photos', desc: 'Save recognized face photos to database' },
                       ].map(item => (
                         <div key={item.key} className="flex items-center justify-between py-3 border border-gray-100 rounded-xl px-4">
                           <div>
                             <p className="text-sm font-medium text-gray-700">{item.label}</p>
                             <p className="text-xs text-gray-400">{item.desc}</p>
                           </div>
-                          <button
-                            onClick={() => setCamera(c => ({...c, [item.key]: !c[item.key]}))}
-                            className={`w-11 h-6 rounded-full transition-all duration-300 relative ${camera[item.key] ? 'bg-blue-500' : 'bg-gray-200'}`}>
-                            <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300"
-                              style={{ left: camera[item.key] ? '22px' : '2px' }}></span>
-                          </button>
+                          <Toggle
+                            value={camera[item.key]}
+                            onChange={() => setCamera(c => ({ ...c, [item.key]: !c[item.key] }))}/>
                         </div>
                       ))}
                     </div>
@@ -557,15 +550,14 @@ export default function Settings() {
                     <div className="flex justify-end">
                       <button onClick={() => showToast('Camera settings saved!')}
                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all">
-                        <MdSave className="w-4 h-4"/>
-                        Save Settings
+                        <MdSave className="w-4 h-4"/> Save Settings
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* NOTIFICATIONS TAB */}
+              {/* ===== NOTIFICATIONS TAB ===== */}
               {activeTab === 'notifications' && (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
@@ -574,25 +566,22 @@ export default function Settings() {
                   </div>
                   <div className="p-6 space-y-5">
 
-                    {/* Toggles */}
+                    {/* Notification Toggles */}
                     <div className="space-y-3">
                       {[
-                        { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
+                        { key: 'emailNotifications', label: 'Email Notifications',  desc: 'Receive notifications via email' },
                         { key: 'lowAttendanceAlert', label: 'Low Attendance Alert', desc: 'Alert when attendance drops below threshold' },
-                        { key: 'dailyReport', label: 'Daily Report', desc: 'Receive daily attendance summary' },
-                        { key: 'weeklyReport', label: 'Weekly Report', desc: 'Receive weekly attendance report' },
+                        { key: 'dailyReport',        label: 'Daily Report',         desc: 'Receive daily attendance summary' },
+                        { key: 'weeklyReport',       label: 'Weekly Report',        desc: 'Receive weekly attendance report' },
                       ].map(item => (
                         <div key={item.key} className="flex items-center justify-between py-3 border border-gray-100 rounded-xl px-4">
                           <div>
                             <p className="text-sm font-medium text-gray-700">{item.label}</p>
                             <p className="text-xs text-gray-400">{item.desc}</p>
                           </div>
-                          <button
-                            onClick={() => setNotifications(n => ({...n, [item.key]: !n[item.key]}))}
-                            className={`w-11 h-6 rounded-full transition-all duration-300 relative ${notifications[item.key] ? 'bg-blue-500' : 'bg-gray-200'}`}>
-                            <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300"
-                              style={{ left: notifications[item.key] ? '22px' : '2px' }}></span>
-                          </button>
+                          <Toggle
+                            value={notifications[item.key]}
+                            onChange={() => setNotifications(n => ({ ...n, [item.key]: !n[item.key] }))}/>
                         </div>
                       ))}
                     </div>
@@ -601,33 +590,30 @@ export default function Settings() {
                       <div>
                         <label className="text-gray-700 text-sm font-medium mb-1.5 block">Low Attendance Threshold (%)</label>
                         <input type="number" value={notifications.lowAttendanceThreshold}
-                          onChange={e => setNotifications({...notifications, lowAttendanceThreshold: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                          min="1" max="100"/>
+                          onChange={e => setNotifications({ ...notifications, lowAttendanceThreshold: e.target.value })}
+                          className={inputCls} min="1" max="100"/>
                       </div>
                       <div>
-                        <label className="text-gray-700 text-sm font-medium mb-1.5 block flex items-center gap-1">
-                          <MdEmail className="w-4 h-4 text-gray-400"/>
-                          Report Email
+                        <label className="text-gray-700 text-sm font-medium mb-1.5 flex items-center gap-1 block">
+                          <MdEmail className="w-4 h-4 text-gray-400"/> Report Email
                         </label>
                         <input type="email" value={notifications.reportEmail}
-                          onChange={e => setNotifications({...notifications, reportEmail: e.target.value})}
-                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"/>
+                          onChange={e => setNotifications({ ...notifications, reportEmail: e.target.value })}
+                          className={inputCls}/>
                       </div>
                     </div>
 
                     <div className="flex justify-end">
                       <button onClick={() => showToast('Notification settings saved!')}
                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all">
-                        <MdSave className="w-4 h-4"/>
-                        Save Settings
+                        <MdSave className="w-4 h-4"/> Save Settings
                       </button>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* DATABASE TAB */}
+              {/* ===== DATABASE TAB ===== */}
               {activeTab === 'database' && (
                 <div className="space-y-5">
 
@@ -640,12 +626,12 @@ export default function Settings() {
                     <div className="p-6">
                       <div className="grid grid-cols-2 gap-4 mb-5">
                         {[
-                          { label: 'Host', value: dbInfo.host, icon: MdStorage },
-                          { label: 'Port', value: dbInfo.port, icon: MdInfo },
-                          { label: 'Database Name', value: dbInfo.name, icon: FaDatabase },
-                          { label: 'Database Size', value: dbInfo.size, icon: MdStorage },
-                          { label: 'Last Backup', value: dbInfo.lastBackup, icon: MdBackup },
-                          { label: 'Status', value: dbInfo.status, icon: MdCheck },
+                          { label: 'Host',          value: dbInfo.host,       icon: MdStorage },
+                          { label: 'Port',          value: dbInfo.port,       icon: MdInfo },
+                          { label: 'Database Name', value: dbInfo.name,       icon: FaDatabase },
+                          { label: 'Database Size', value: dbInfo.size,       icon: MdStorage },
+                          { label: 'Last Backup',   value: dbInfo.lastBackup, icon: MdBackup },
+                          { label: 'Status',        value: dbInfo.status,     icon: MdCheck },
                         ].map((item, i) => {
                           const Icon = item.icon;
                           return (
@@ -668,18 +654,15 @@ export default function Settings() {
                       <div className="flex gap-3">
                         <button onClick={() => showToast('Backup started!')}
                           className="flex items-center gap-2 px-4 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-xl transition-all">
-                          <MdBackup className="w-4 h-4"/>
-                          Backup Now
+                          <MdBackup className="w-4 h-4"/> Backup Now
                         </button>
                         <button onClick={() => showToast('Database exported!')}
                           className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-500 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all">
-                          <MdDownload className="w-4 h-4"/>
-                          Export Data
+                          <MdDownload className="w-4 h-4"/> Export Data
                         </button>
-                        <button onClick={() => showToast('Connection refreshed!', 'success')}
+                        <button onClick={() => showToast('Connection refreshed!')}
                           className="flex items-center gap-2 px-4 py-2.5 border border-gray-200 text-gray-500 text-sm font-medium rounded-xl hover:bg-gray-50 transition-all">
-                          <MdRefresh className="w-4 h-4"/>
-                          Test Connection
+                          <MdRefresh className="w-4 h-4"/> Test Connection
                         </button>
                       </div>
                     </div>
@@ -693,9 +676,9 @@ export default function Settings() {
                     </div>
                     <div className="p-6 space-y-3">
                       {[
-                        { label: 'Clear Attendance Records', desc: 'Delete all attendance data permanently', btn: 'Clear Records' },
-                        { label: 'Reset All Students', desc: 'Remove all registered students and face data', btn: 'Reset Students' },
-                        { label: 'Factory Reset', desc: 'Reset entire system to default settings', btn: 'Factory Reset' },
+                        { label: 'Clear Attendance Records', desc: 'Delete all attendance data permanently',       btn: 'Clear Records' },
+                        { label: 'Reset All Students',       desc: 'Remove all registered students and face data', btn: 'Reset Students' },
+                        { label: 'Factory Reset',            desc: 'Reset entire system to default settings',      btn: 'Factory Reset' },
                       ].map((item, i) => (
                         <div key={i} className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100">
                           <div>
@@ -714,6 +697,7 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+
             </div>
           </div>
         </div>

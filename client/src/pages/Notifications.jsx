@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
-  MdLogout, MdMenu, MdCalendarToday,
+  MdMenu, MdCalendarToday,
+  MdNotifications, MdHistory, MdBarChart,
   MdCheck, MdClose, MdDelete,
   MdCheckCircle, MdWarning, MdInfo,
-  MdError, MdFilterList, MdSearch,
+  MdError, MdSearch,
   MdDoneAll, MdDeleteSweep, MdRefresh,
   MdPerson, MdSchool, MdAccessTime
 } from 'react-icons/md';
@@ -20,12 +18,12 @@ export default function Notifications() {
   const [user, setUser] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
 
+  // ── Auth guard ────────────────────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -35,29 +33,26 @@ export default function Notifications() {
     } catch { navigate('/'); }
   }, [navigate]);
 
-  // TODO: Replace with a real call once /api/notifications exists on the backend.
-  // Expected shape per notification:
-  // {
-  //   id, type: 'success'|'warning'|'error'|'info',
+  // ── Fetch notifications ───────────────────────────────────
+  // TODO: Replace with real call once /api/notifications exists.
+  // Expected shape per item:
+  // { id, type: 'success'|'warning'|'error'|'info',
   //   category: 'attendance'|'student'|'system'|'report',
-  //   title, message, time, date, read, student?, class?
-  // }
+  //   title, message, time, date, read, student?, class? }
   useEffect(() => {
     const fetchNotifications = async () => {
       setLoading(true);
-      setError(null);
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/notifications', {
+        const res = await fetch('http://localhost:5000/api/notifications', {
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (!res.ok) throw new Error('Failed to load notifications');
+        if (!res.ok) throw new Error('Not available');
         const data = await res.json();
         setNotifications(Array.isArray(data) ? data : data.notifications || []);
-      } catch (err) {
-        // Backend endpoint not available yet — show empty state instead of dummy data.
+      } catch {
+        // Backend not ready yet — show empty state
         setNotifications([]);
-        setError(null);
       } finally {
         setLoading(false);
       }
@@ -67,59 +62,63 @@ export default function Notifications() {
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
-
-  const filtered = notifications.filter(n => {
-    const matchRead = filter === 'all' || (filter === 'unread' && !n.read) || (filter === 'read' && n.read);
-    const matchCategory = categoryFilter === 'all' || n.category === categoryFilter;
-    const matchSearch = n.title.toLowerCase().includes(search.toLowerCase()) ||
-      n.message.toLowerCase().includes(search.toLowerCase());
-    return matchRead && matchCategory && matchSearch;
-  });
-
+  // ── Actions ───────────────────────────────────────────────
   const markRead = (id) => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    // TODO: persist to backend, e.g. PATCH /api/notifications/:id { read: true }
+    // TODO: PATCH /api/notifications/:id { read: true }
   };
 
   const markAllRead = () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    // TODO: persist to backend, e.g. POST /api/notifications/mark-all-read
+    // TODO: POST /api/notifications/mark-all-read
   };
 
   const deleteNotification = (id) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     if (selected?.id === id) setSelected(null);
-    // TODO: persist to backend, e.g. DELETE /api/notifications/:id
+    // TODO: DELETE /api/notifications/:id
   };
 
   const clearAll = () => {
     setNotifications([]);
     setSelected(null);
-    // TODO: persist to backend, e.g. DELETE /api/notifications
+    // TODO: DELETE /api/notifications
   };
 
+  // ── Derived values ────────────────────────────────────────
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const filtered = notifications.filter(n => {
+    const matchRead     = filter === 'all' || (filter === 'unread' && !n.read) || (filter === 'read' && n.read);
+    const matchCategory = categoryFilter === 'all' || n.category === categoryFilter;
+    const matchSearch   = (n.title || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (n.message || '').toLowerCase().includes(search.toLowerCase());
+    return matchRead && matchCategory && matchSearch;
+  });
+
+  // ── Config ────────────────────────────────────────────────
   const typeConfig = {
-    success: { icon: MdCheckCircle, color: 'text-green-500', bg: 'bg-green-50', border: 'border-green-100', badge: 'bg-green-100 text-green-700' },
-    warning: { icon: MdWarning, color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700' },
-    error: { icon: MdError, color: 'text-red-500', bg: 'bg-red-50', border: 'border-red-100', badge: 'bg-red-100 text-red-700' },
-    info: { icon: MdInfo, color: 'text-blue-500', bg: 'bg-blue-50', border: 'border-blue-100', badge: 'bg-blue-100 text-blue-700' },
+    success: { icon: MdCheckCircle, color: 'text-green-500',  bg: 'bg-green-50',  border: 'border-green-100',  badge: 'bg-green-100 text-green-700' },
+    warning: { icon: MdWarning,     color: 'text-yellow-500', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700' },
+    error:   { icon: MdError,       color: 'text-red-500',    bg: 'bg-red-50',    border: 'border-red-100',    badge: 'bg-red-100 text-red-700' },
+    info:    { icon: MdInfo,        color: 'text-blue-500',   bg: 'bg-blue-50',   border: 'border-blue-100',   badge: 'bg-blue-100 text-blue-700' },
   };
 
   const categoryConfig = {
     attendance: { label: 'Attendance', color: 'bg-purple-100 text-purple-700' },
-    student: { label: 'Student', color: 'bg-blue-100 text-blue-700' },
-    system: { label: 'System', color: 'bg-gray-100 text-gray-700' },
-    report: { label: 'Report', color: 'bg-orange-100 text-orange-700' },
+    student:    { label: 'Student',    color: 'bg-blue-100 text-blue-700' },
+    system:     { label: 'System',     color: 'bg-gray-100 text-gray-700' },
+    report:     { label: 'Report',     color: 'bg-orange-100 text-orange-700' },
   };
 
   const stats = [
-    { label: 'Total', value: notifications.length, icon: FaBell, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Unread', value: unreadCount, icon: MdNotifications, color: 'text-orange-500', bg: 'bg-orange-50' },
-    { label: 'Warnings', value: notifications.filter(n => n.type === 'warning').length, icon: MdWarning, color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Errors', value: notifications.filter(n => n.type === 'error').length, icon: MdError, color: 'text-red-500', bg: 'bg-red-50' },
+    { label: 'Total',    value: notifications.length,                                       icon: FaBell,          color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Unread',   value: unreadCount,                                                icon: MdNotifications, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Warnings', value: notifications.filter(n => n.type === 'warning').length,     icon: MdWarning,       color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Errors',   value: notifications.filter(n => n.type === 'error').length,       icon: MdError,         color: 'text-red-500',    bg: 'bg-red-50' },
   ];
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar user={user} onLogout={handleLogout}/>
@@ -174,7 +173,7 @@ export default function Notifications() {
           {/* Main Layout */}
           <div className="flex gap-5">
 
-            {/* Left Panel */}
+            {/* ── Left Panel ── */}
             <div className="flex-1">
 
               {/* Toolbar */}
@@ -197,7 +196,9 @@ export default function Notifications() {
                         onClick={() => setFilter(f)}
                         className={`px-3 py-2 rounded-lg text-xs font-medium capitalize transition-all
                           ${filter === f ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
-                        {f === 'all' ? `All (${notifications.length})` : f === 'unread' ? `Unread (${unreadCount})` : 'Read'}
+                        {f === 'all'    ? `All (${notifications.length})`
+                          : f === 'unread' ? `Unread (${unreadCount})`
+                          : 'Read'}
                       </button>
                     ))}
                   </div>
@@ -217,21 +218,18 @@ export default function Notifications() {
                   <div className="flex gap-2 ml-auto">
                     <button onClick={() => window.location.reload()}
                       className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                      <MdRefresh className="w-4 h-4"/>
-                      Refresh
+                      <MdRefresh className="w-4 h-4"/> Refresh
                     </button>
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
                         className="flex items-center gap-1.5 px-3 py-2 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                        <MdDoneAll className="w-4 h-4"/>
-                        Mark All Read
+                        <MdDoneAll className="w-4 h-4"/> Mark All Read
                       </button>
                     )}
                     {notifications.length > 0 && (
                       <button onClick={clearAll}
                         className="flex items-center gap-1.5 px-3 py-2 border border-red-100 rounded-xl text-xs text-red-400 hover:bg-red-50 transition-all">
-                        <MdDeleteSweep className="w-4 h-4"/>
-                        Clear All
+                        <MdDeleteSweep className="w-4 h-4"/> Clear All
                       </button>
                     )}
                   </div>
@@ -242,13 +240,13 @@ export default function Notifications() {
               <div className="space-y-2">
                 {loading ? (
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-16 text-center">
-                    <MdRefresh className="w-10 h-10 text-gray-200 mx-auto mb-4 animate-spin"/>
+                    <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"/>
                     <p className="text-gray-400 font-medium">Loading notifications...</p>
                   </div>
                 ) : filtered.length > 0 ? (
                   filtered.map(notification => {
-                    const config = typeConfig[notification.type] || typeConfig.info;
-                    const Icon = config.icon;
+                    const config    = typeConfig[notification.type] || typeConfig.info;
+                    const Icon      = config.icon;
                     const catConfig = categoryConfig[notification.category] || categoryConfig.system;
                     const isSelected = selected?.id === notification.id;
 
@@ -258,8 +256,8 @@ export default function Notifications() {
                         className={`bg-white rounded-xl border shadow-sm p-4 cursor-pointer transition-all hover:shadow-md
                           ${isSelected ? 'border-blue-300 ring-2 ring-blue-100' : 'border-gray-100'}
                           ${!notification.read ? 'border-l-4 border-l-blue-500' : ''}`}>
-                        <div className="flex items-start gap-3">
 
+                        <div className="flex items-start gap-3">
                           {/* Icon */}
                           <div className={`w-10 h-10 ${config.bg} rounded-xl flex items-center justify-center flex-shrink-0 border ${config.border}`}>
                             <Icon className={`w-5 h-5 ${config.color}`}/>
@@ -273,7 +271,7 @@ export default function Notifications() {
                                   {notification.title}
                                 </p>
                                 {!notification.read && (
-                                  <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"/>
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -327,17 +325,20 @@ export default function Notifications() {
               </div>
             </div>
 
-            {/* Right Panel — Detail */}
+            {/* ── Right Panel — Detail ── */}
             <div className="w-80 flex-shrink-0">
 
               {selected ? (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden sticky top-24">
 
                   {/* Header */}
-                  <div className={`p-5 border-b ${typeConfig[selected.type].bg} ${typeConfig[selected.type].border}`}>
+                  <div className={`p-5 border-b ${typeConfig[selected.type]?.bg} ${typeConfig[selected.type]?.border}`}>
                     <div className="flex items-start justify-between">
-                      <div className={`w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm border ${typeConfig[selected.type].border}`}>
-                        {(() => { const Icon = typeConfig[selected.type].icon; return <Icon className={`w-6 h-6 ${typeConfig[selected.type].color}`}/>; })()}
+                      <div className={`w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm border ${typeConfig[selected.type]?.border}`}>
+                        {(() => {
+                          const Icon = typeConfig[selected.type]?.icon || MdInfo;
+                          return <Icon className={`w-6 h-6 ${typeConfig[selected.type]?.color}`}/>;
+                        })()}
                       </div>
                       <button onClick={() => setSelected(null)}
                         className="text-gray-400 hover:text-gray-600 transition-all">
@@ -346,11 +347,11 @@ export default function Notifications() {
                     </div>
                     <h3 className="font-semibold text-gray-800 mt-3 text-sm">{selected.title}</h3>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeConfig[selected.type].badge}`}>
-                        {selected.type.charAt(0).toUpperCase() + selected.type.slice(1)}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeConfig[selected.type]?.badge}`}>
+                        {(selected.type || '').charAt(0).toUpperCase() + (selected.type || '').slice(1)}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryConfig[selected.category].color}`}>
-                        {categoryConfig[selected.category].label}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryConfig[selected.category]?.color}`}>
+                        {categoryConfig[selected.category]?.label}
                       </span>
                     </div>
                   </div>
@@ -378,48 +379,40 @@ export default function Notifications() {
                       )}
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <MdCheck className="w-4 h-4 text-gray-400"/>
-                        <span>Status: <span className={selected.read ? 'text-green-600' : 'text-orange-500'}>{selected.read ? 'Read' : 'Unread'}</span></span>
+                        <span>Status: <span className={selected.read ? 'text-green-600' : 'text-orange-500'}>
+                          {selected.read ? 'Read' : 'Unread'}
+                        </span></span>
                       </div>
                     </div>
 
                     {/* Quick Actions */}
                     <div className="pt-3 border-t border-gray-100 space-y-2">
                       {selected.student && (
-                        <button
-                          onClick={() => navigate('/students')}
+                        <button onClick={() => navigate('/students')}
                           className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-medium rounded-xl border border-blue-100 transition-all">
-                          <MdPerson className="w-4 h-4"/>
-                          View Student Profile
+                          <MdPerson className="w-4 h-4"/> View Student Profile
                         </button>
                       )}
                       {selected.category === 'attendance' && (
-                        <button
-                          onClick={() => navigate('/attendance')}
+                        <button onClick={() => navigate('/attendance')}
                           className="w-full flex items-center justify-center gap-2 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-600 text-xs font-medium rounded-xl border border-purple-100 transition-all">
-                          <MdHistory className="w-4 h-4"/>
-                          View Attendance
+                          <MdHistory className="w-4 h-4"/> View Attendance
                         </button>
                       )}
                       {selected.category === 'report' && (
-                        <button
-                          onClick={() => navigate('/reports')}
+                        <button onClick={() => navigate('/reports')}
                           className="w-full flex items-center justify-center gap-2 py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-600 text-xs font-medium rounded-xl border border-orange-100 transition-all">
-                          <MdBarChart className="w-4 h-4"/>
-                          View Reports
+                          <MdBarChart className="w-4 h-4"/> View Reports
                         </button>
                       )}
-                      <button
-                        onClick={() => deleteNotification(selected.id)}
+                      <button onClick={() => deleteNotification(selected.id)}
                         className="w-full flex items-center justify-center gap-2 py-2.5 bg-red-50 hover:bg-red-100 text-red-400 text-xs font-medium rounded-xl border border-red-100 transition-all">
-                        <MdDelete className="w-4 h-4"/>
-                        Delete Notification
+                        <MdDelete className="w-4 h-4"/> Delete Notification
                       </button>
                     </div>
                   </div>
                 </div>
               ) : (
-
-                /* Empty Detail Panel */
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center sticky top-24">
                   <FaBell className="w-12 h-12 text-gray-200 mx-auto mb-4"/>
                   <p className="text-gray-400 font-medium text-sm">Select a notification</p>
@@ -427,7 +420,7 @@ export default function Notifications() {
                 </div>
               )}
 
-              {/* Summary Card */}
+              {/* Category Summary Card */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mt-4">
                 <h3 className="font-semibold text-gray-700 text-sm mb-3">Category Summary</h3>
                 <div className="space-y-2">
