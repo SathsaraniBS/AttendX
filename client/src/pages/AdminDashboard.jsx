@@ -6,17 +6,18 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  MdPeople, MdCheckCircle, MdCancel, MdClass,
-  MdBarChart, MdRefresh, MdNotifications,
+  MdClass, MdBarChart, MdRefresh, MdNotifications,
   MdAccessTime, MdCalendarToday
 } from 'react-icons/md';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
-const STUDENTS_API  = 'http://localhost:5000/api/students/';
-const CLASSES_API   = 'http://localhost:5000/api/classes/';
-const ATTENDANCE_API = 'http://localhost:5000/api/attendance/history';
+// ── API base ──────────────────────────────────────────────────────────────────
+const BASE             = 'http://localhost:5000/api';
+const STUDENTS_API     = `${BASE}/students/`;
+const CLASSES_API      = `${BASE}/classes/`;
+const ATTENDANCE_API   = `${BASE}/attendance/history`;
 
-// ─── Colour helpers (same logic as StudentList + Classes) ─────────────────────
+// ── Colour helpers ─────────────────────────────────────────────────────────────
 const CLASS_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#f97316', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 const attendanceColor = (r) => {
@@ -31,39 +32,47 @@ const attendanceTextColor = (r) => {
   return 'text-red-500';
 };
 
-// ─── Build last‑7‑days chart labels ──────────────────────────────────────────
-const getLast7Days = () => {
-  return Array.from({ length: 7 }, (_, i) => {
+// ── Build last-7-days chart labels ────────────────────────────────────────────
+const getLast7Days = () =>
+  Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
     return {
-      date: d.toISOString().split('T')[0],
+      date:  d.toISOString().split('T')[0],
       label: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
     };
   });
-};
 
-// ─── Compute daily attendance rate from raw records ──────────────────────────
-const buildDailyTrend = (records) => {
-  const days = getLast7Days();
-  return days.map(({ date, label }) => {
-    const dayRecords = records.filter(r => r.date === date);
-    const total = dayRecords.length;
-    const present = dayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+// ── Build last-30-days chart labels ───────────────────────────────────────────
+const getLast30Days = () =>
+  Array.from({ length: 30 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (29 - i));
     return {
-      date: label,
+      date:  d.toISOString().split('T')[0],
+      label: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+    };
+  });
+
+// ── Compute daily attendance rate ─────────────────────────────────────────────
+const buildDailyTrend = (records, days) =>
+  days.map(({ date, label }) => {
+    const dayRecords = records.filter(r => r.date === date);
+    const total      = dayRecords.length;
+    const present    = dayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+    return {
+      date:  label,
       value: total > 0 ? Math.round((present / total) * 100) : 0,
     };
   });
-};
 
-// ─── Build period summary rows ────────────────────────────────────────────────
+// ── Build period summary rows ─────────────────────────────────────────────────
 const buildSummary = (records) => {
-  const today = new Date().toISOString().split('T')[0];
-  const weekStart = new Date();
+  const today        = new Date().toISOString().split('T')[0];
+  const weekStart    = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const weekStartStr = weekStart.toISOString().split('T')[0];
-  const monthStart = new Date();
+  const monthStart   = new Date();
   monthStart.setDate(1);
   const monthStartStr = monthStart.toISOString().split('T')[0];
 
@@ -83,22 +92,18 @@ const buildSummary = (records) => {
   ];
 };
 
-// ─── Dashboard ────────────────────────────────────────────────────────────────
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-
-  // data
+  const [user,       setUser]       = useState(null);
   const [students,   setStudents]   = useState([]);
   const [classes,    setClasses]    = useState([]);
   const [attendance, setAttendance] = useState([]);
-
-  // ui
   const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [chartRange, setChartRange] = useState('week'); // 'week' | 'month'
 
-  // ── auth guard ──────────────────────────────────────────────────────────────
+  // ── Auth guard ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const token    = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -113,7 +118,7 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  // ── fetch all three APIs in parallel (same pattern as Classes.jsx) ──────────
+  // ── Fetch all three APIs in parallel ─────────────────────────────────────────
   const fetchAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
@@ -123,13 +128,19 @@ export default function AdminDashboard() {
       const headers = { Authorization: `Bearer ${token}` };
 
       const [studRes, classRes, attRes] = await Promise.all([
-        axios.get(STUDENTS_API,   { headers, timeout: 6000 }),
-        axios.get(CLASSES_API,    { headers, timeout: 6000 }),
-        fetch(ATTENDANCE_API,     { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(STUDENTS_API,  { headers, timeout: 6000 }),
+        axios.get(CLASSES_API,   { headers, timeout: 6000 }),
+        fetch(ATTENDANCE_API,    { headers: { Authorization: `Bearer ${token}` } }),
       ]);
 
-      setStudents(studRes.data  || []);
-      setClasses(classRes.data  || []);
+      const studs = studRes.data  || [];
+      const cls   = classRes.data || [];
+      setStudents(studs);
+      setClasses(cls);
+
+      // ✅ Cache for offline fallback
+      localStorage.setItem('attendx_students', JSON.stringify(studs));
+      localStorage.setItem('attendx_classes',  JSON.stringify(cls));
 
       if (attRes.ok) {
         const attData = await attRes.json();
@@ -137,11 +148,11 @@ export default function AdminDashboard() {
       }
     } catch (err) {
       console.error('Dashboard fetch error:', err);
-      // Fallback to localStorage if available
+      // ✅ Fallback to localStorage cache
       try {
-        const cached = localStorage.getItem('attendx_students');
-        if (cached) setStudents(JSON.parse(cached));
+        const cached    = localStorage.getItem('attendx_students');
         const cachedCls = localStorage.getItem('attendx_classes');
+        if (cached)    setStudents(JSON.parse(cached));
         if (cachedCls) setClasses(JSON.parse(cachedCls));
       } catch { /* ignore */ }
     } finally {
@@ -154,33 +165,33 @@ export default function AdminDashboard() {
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
-  // ── derived values ───────────────────────────────────────────────────────────
-  const today          = new Date().toISOString().split('T')[0];
-  const todayRecords   = attendance.filter(r => r.date === today);
-  const presentToday   = todayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
-  const absentToday    = todayRecords.filter(r => r.status === 'Absent').length;
-  const totalStudents  = students.length;
-  const activeClasses  = classes.filter(c => c.status === 'Active').length;
+  // ── Derived values ───────────────────────────────────────────────────────────
+  const today         = new Date().toISOString().split('T')[0];
+  const todayRecords  = attendance.filter(r => r.date === today);
+  const presentToday  = todayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+  const absentToday   = todayRecords.filter(r => r.status === 'Absent').length;
+  const totalStudents = students.length;
+  const activeClasses = classes.filter(c => c.status === 'Active').length;
 
   const overallRate = todayRecords.length > 0
     ? Math.round((presentToday / todayRecords.length) * 100)
-    : (students.length > 0
-        ? Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)
-        : 0);
+    : students.length > 0
+      ? Math.round(students.reduce((a, s) => a + (s.attendance || 0), 0) / students.length)
+      : 0;
 
-  // Recent attendance (last 5 unique records from today or latest)
+  // ✅ Fix: safe sort — timeIn null/undefined crash prevent
   const recentRecords = [...attendance]
     .sort((a, b) => {
-      const da = new Date(`${a.date} ${a.timeIn || '00:00'}`);
-      const db = new Date(`${b.date} ${b.timeIn || '00:00'}`);
+      const da = new Date(`${a.date || '2000-01-01'} ${a.timeIn || '00:00'}`);
+      const db = new Date(`${b.date || '2000-01-01'} ${b.timeIn || '00:00'}`);
       return db - da;
     })
     .slice(0, 5);
 
-  // Charts
-  const lineData = buildDailyTrend(attendance);
-
-  const barData = lineData; // same shape, separate visual
+  // ✅ Fix: chartRange actually filters data
+  const chartDays = chartRange === 'week' ? getLast7Days() : getLast30Days();
+  const lineData  = buildDailyTrend(attendance, chartDays);
+  const barData   = buildDailyTrend(attendance, getLast7Days()); // bar always shows 7 days
 
   // Pie chart: top 5 classes by attendance rate
   const pieData = classes
@@ -194,56 +205,54 @@ export default function AdminDashboard() {
 
   const summaryRows = buildSummary(attendance);
 
-  // ── stat cards ───────────────────────────────────────────────────────────────
+  // Absent notification count (today)
+  const absentNotifCount = attendance.filter(r => r.date === today && r.status === 'Absent').length;
+
+  // ── Stat cards ───────────────────────────────────────────────────────────────
   const statCards = [
     {
-      label: 'Total Students',
-      value: totalStudents,
-      sub:   'View all students →',
-      icon:  '👥',
-      light: 'bg-blue-50',
-      iconBg: 'bg-blue-100',
+      label:   'Total Students',
+      value:   totalStudents,
+      sub:     'View all students →',
+      icon:    '👥',
+      iconBg:  'bg-blue-100',
       onClick: () => navigate('/students'),
     },
     {
-      label: 'Present Today',
-      value: presentToday,
-      sub:   `${todayRecords.length > 0 ? Math.round((presentToday / todayRecords.length) * 100) : 0}% of records`,
-      icon:  '✅',
-      light: 'bg-green-50',
-      iconBg: 'bg-green-100',
+      label:   'Present Today',
+      value:   presentToday,
+      sub:     `${todayRecords.length > 0 ? Math.round((presentToday / todayRecords.length) * 100) : 0}% of records`,
+      icon:    '✅',
+      iconBg:  'bg-green-100',
       onClick: () => navigate('/attendance'),
     },
     {
-      label: 'Absent Today',
-      value: absentToday,
-      sub:   `${todayRecords.length > 0 ? Math.round((absentToday / todayRecords.length) * 100) : 0}% of records`,
-      icon:  '❌',
-      light: 'bg-orange-50',
-      iconBg: 'bg-orange-100',
+      label:   'Absent Today',
+      value:   absentToday,
+      sub:     `${todayRecords.length > 0 ? Math.round((absentToday / todayRecords.length) * 100) : 0}% of records`,
+      icon:    '❌',
+      iconBg:  'bg-orange-100',
       onClick: () => navigate('/attendance'),
     },
     {
-      label: 'Active Classes',
-      value: activeClasses,
-      sub:   `${classes.length} total classes`,
-      icon:  '📅',
-      light: 'bg-purple-50',
-      iconBg: 'bg-purple-100',
+      label:   'Active Classes',
+      value:   activeClasses,
+      sub:     `${classes.length} total classes`,
+      icon:    '📅',
+      iconBg:  'bg-purple-100',
       onClick: () => navigate('/classes'),
     },
     {
-      label: 'Attendance Rate',
-      value: `${overallRate}%`,
-      sub:   todayRecords.length > 0 ? 'Today' : 'Overall avg',
-      icon:  '📊',
-      light: 'bg-blue-50',
-      iconBg: 'bg-blue-100',
+      label:   'Attendance Rate',
+      value:   `${overallRate}%`,
+      sub:     todayRecords.length > 0 ? 'Today' : 'Overall avg',
+      icon:    '📊',
+      iconBg:  'bg-blue-100',
       onClick: () => navigate('/attendance'),
     },
   ];
 
-  // ── render ───────────────────────────────────────────────────────────────────
+  // ── Loading State ─────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -258,13 +267,12 @@ export default function AdminDashboard() {
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
 
-      {/* SIDEBAR */}
       <AdminSidebar user={user} onLogout={handleLogout}/>
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 ml-56">
 
         {/* ── Top Bar ── */}
@@ -277,6 +285,7 @@ export default function AdminDashboard() {
             </button>
             <h1 className="text-lg font-semibold text-gray-800">Dashboard</h1>
           </div>
+
           <div className="flex items-center gap-4">
             {/* Refresh */}
             <button
@@ -294,16 +303,19 @@ export default function AdminDashboard() {
               })}</span>
             </div>
 
-            <button className="relative text-gray-400 hover:text-gray-600">
+            {/* Notification bell — absent count badge */}
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative text-gray-400 hover:text-gray-600 transition-all">
               <MdNotifications className="w-5 h-5"/>
-              {attendance.filter(r => r.date === today && r.status === 'Absent').length > 0 && (
+              {absentNotifCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-xs text-white flex items-center justify-center">
-                  {Math.min(attendance.filter(r => r.date === today && r.status === 'Absent').length, 9)}
+                  {Math.min(absentNotifCount, 9)}
                 </span>
               )}
             </button>
 
-            <div className="flex items-center gap-2 cursor-pointer">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/settings')}>
               <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-bold">
                 {user?.name?.charAt(0) || 'A'}
               </div>
@@ -334,12 +346,14 @@ export default function AdminDashboard() {
           {/* ── Line Chart + Recent Attendance ── */}
           <div className="grid grid-cols-3 gap-5 mb-5">
 
-            {/* Attendance trend line chart — real data */}
+            {/* Attendance trend — real data */}
             <div className="col-span-2 bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h2 className="text-gray-800 font-semibold text-sm">Attendance Overview</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Daily attendance rate — last 7 days</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Daily attendance rate — {chartRange === 'week' ? 'last 7 days' : 'last 30 days'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
                   {attendance.length === 0 && (
@@ -347,10 +361,11 @@ export default function AdminDashboard() {
                       No records yet
                     </span>
                   )}
+                  {/* ✅ Fix: chartRange now actually changes data */}
                   <select
                     value={chartRange}
                     onChange={e => setChartRange(e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-500 focus:outline-none">
+                    className="text-xs border border-gray-200 rounded-lg px-3 py-1.5 text-gray-500 focus:outline-none bg-white">
                     <option value="week">This Week</option>
                     <option value="month">This Month</option>
                   </select>
@@ -358,17 +373,26 @@ export default function AdminDashboard() {
               </div>
               <ResponsiveContainer width="100%" height={200}>
                 <LineChart data={lineData}>
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}/>
-                  <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} domain={[0, 100]} tickFormatter={v => `${v}%`}/>
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: '#9ca3af' }}
+                    axisLine={false} tickLine={false}
+                    interval={chartRange === 'month' ? 4 : 0}/>
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#9ca3af' }}
+                    axisLine={false} tickLine={false}
+                    domain={[0, 100]}
+                    tickFormatter={v => `${v}%`}/>
                   <Tooltip formatter={v => [`${v}%`, 'Attendance Rate']}/>
                   <Line
                     type="monotone" dataKey="value" stroke="#3b82f6" strokeWidth={2}
-                    dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }}/>
+                    dot={{ fill: '#3b82f6', r: chartRange === 'month' ? 2 : 4 }}
+                    activeDot={{ r: 6 }}/>
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Recent Attendance — real records from API */}
+            {/* Recent Attendance — real records */}
             <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-gray-800 font-semibold text-sm">Recent Attendance</h2>
@@ -414,7 +438,7 @@ export default function AdminDashboard() {
           {/* ── Pie + Bar + Quick Actions ── */}
           <div className="grid grid-cols-3 gap-5 mb-5">
 
-            {/* Pie Chart — real class attendance from classes API */}
+            {/* Pie Chart — class attendance */}
             <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-gray-800 font-semibold text-sm">Attendance by Class</h2>
@@ -465,7 +489,7 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* Bar Chart — daily rate from real attendance records */}
+            {/* Bar Chart — daily rate */}
             <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-gray-800 font-semibold text-sm">Attendance Trend</h2>
@@ -486,8 +510,8 @@ export default function AdminDashboard() {
               <h2 className="text-gray-800 font-semibold text-sm mb-4">Quick Actions</h2>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Mark Attendance', icon: '📷', color: 'bg-blue-50 text-blue-600 border-blue-100',    path: '/live' },
-                  { label: 'Add Student',     icon: '👤', color: 'bg-green-50 text-green-600 border-green-100', path: '/students' },
+                  { label: 'Mark Attendance', icon: '📷', color: 'bg-blue-50 text-blue-600 border-blue-100',       path: '/live' },
+                  { label: 'Add Student',     icon: '👤', color: 'bg-green-50 text-green-600 border-green-100',    path: '/students' },
                   { label: 'Add Class',       icon: '🏫', color: 'bg-purple-50 text-purple-600 border-purple-100', path: '/classes' },
                   { label: 'Generate Report', icon: '📊', color: 'bg-orange-50 text-orange-600 border-orange-100', path: '/reports' },
                 ].map((action, i) => (
@@ -510,7 +534,7 @@ export default function AdminDashboard() {
           {/* ── Summary Table + System Overview ── */}
           <div className="grid grid-cols-3 gap-5">
 
-            {/* Attendance Summary — computed from real attendance records */}
+            {/* Attendance Summary */}
             <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="text-gray-800 font-semibold text-sm">Attendance Summary</h2>
@@ -553,35 +577,15 @@ export default function AdminDashboard() {
               </table>
             </div>
 
-            {/* System Overview — real counts from API */}
+            {/* System Overview */}
             <div className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm">
               <h2 className="text-gray-800 font-semibold text-sm mb-4">System Overview</h2>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  {
-                    label: 'Total Students',
-                    value: students.length,
-                    icon:  '👥',
-                    color: 'bg-blue-50',
-                  },
-                  {
-                    label: 'Active Students',
-                    value: students.filter(s => s.status === 'Active').length,
-                    icon:  '✅',
-                    color: 'bg-green-50',
-                  },
-                  {
-                    label: 'Face Registered',
-                    value: students.filter(s => s.hasFace).length,
-                    icon:  '🎭',
-                    color: 'bg-purple-50',
-                  },
-                  {
-                    label: 'Active Classes',
-                    value: classes.filter(c => c.status === 'Active').length,
-                    icon:  '📅',
-                    color: 'bg-orange-50',
-                  },
+                  { label: 'Total Students',  value: students.length,                                  icon: '👥', color: 'bg-blue-50' },
+                  { label: 'Active Students', value: students.filter(s => s.status === 'Active').length, icon: '✅', color: 'bg-green-50' },
+                  { label: 'Face Registered', value: students.filter(s => s.hasFace).length,           icon: '🎭', color: 'bg-purple-50' },
+                  { label: 'Active Classes',  value: classes.filter(c => c.status === 'Active').length, icon: '📅', color: 'bg-orange-50' },
                 ].map((item, i) => (
                   <div key={i} className={`${item.color} rounded-xl p-3`}>
                     <span className="text-xl">{item.icon}</span>
@@ -591,7 +595,7 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Avg attendance bar */}
+              {/* Overall avg attendance bar */}
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs text-gray-500">Overall Avg Attendance</span>
