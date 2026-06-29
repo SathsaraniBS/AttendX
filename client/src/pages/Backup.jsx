@@ -1,19 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdSettings,
-  MdNotifications, MdBackup, MdAssignment,
-  MdVisibility, MdHistory, MdBarChart,
-  MdLogout, MdMenu, MdCalendarToday,
+  MdMenu, MdCalendarToday,
   MdCheck, MdClose, MdDelete,
   MdDownload, MdUpload, MdRefresh,
   MdStorage, MdInfo, MdWarning,
   MdSchedule, MdCheckCircle, MdError,
-  MdFolder, MdCloud, MdComputer
+  MdFolder, MdCloud, MdComputer, MdBackup
 } from 'react-icons/md';
 import { FaDatabase, FaCloudUploadAlt, FaCloudDownloadAlt, FaHdd } from 'react-icons/fa';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
+
 // ==================== SAMPLE DATA ====================
+// TODO: Replace with real API call once /api/backup endpoint is ready
 const sampleBackups = [
   {
     id: 1,
@@ -98,6 +97,7 @@ export default function Backup() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  // ── Manual Backup ─────────────────────────────────────────
   const startBackup = () => {
     setIsBackingUp(true);
     setBackupProgress(0);
@@ -146,37 +146,15 @@ export default function Backup() {
     showToast(`Downloading ${backup.name}...`);
   };
 
+  // ── Stats ─────────────────────────────────────────────────
   const stats = [
-    {
-      label: 'Total Backups',
-      value: backups.length,
-      icon: FaDatabase,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50'
-    },
-    {
-      label: 'Successful',
-      value: backups.filter(b => b.status === 'Success').length,
-      icon: MdCheckCircle,
-      color: 'text-green-600',
-      bg: 'bg-green-50'
-    },
-    {
-      label: 'Failed',
-      value: backups.filter(b => b.status === 'Failed').length,
-      icon: MdError,
-      color: 'text-red-500',
-      bg: 'bg-red-50'
-    },
-    {
-      label: 'Storage Used',
-      value: '23.4 MB',
-      icon: FaHdd,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50'
-    },
+    { label: 'Total Backups', value: backups.length,                                       icon: FaDatabase,    color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Successful',    value: backups.filter(b => b.status === 'Success').length,   icon: MdCheckCircle, color: 'text-green-600',  bg: 'bg-green-50' },
+    { label: 'Failed',        value: backups.filter(b => b.status === 'Failed').length,    icon: MdError,       color: 'text-red-500',    bg: 'bg-red-50' },
+    { label: 'Storage Used',  value: '23.4 MB',                                            icon: FaHdd,         color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar user={user} onLogout={handleLogout}/>
@@ -245,13 +223,13 @@ export default function Backup() {
                     <span>{backupProgress}%</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-2 bg-blue-500 rounded-full transition-all duration-300"
-                      style={{ width: `${backupProgress}%` }}></div>
+                    <div className="h-2 bg-blue-500 rounded-full transition-all duration-300"
+                      style={{ width: `${backupProgress}%` }}/>
                   </div>
                   <div className="space-y-1">
                     {['students', 'attendance', 'classes', 'users'].map((table, i) => (
-                      <div key={table} className={`flex items-center gap-2 text-xs ${backupProgress > i * 25 ? 'text-green-500' : 'text-gray-300'}`}>
+                      <div key={table}
+                        className={`flex items-center gap-2 text-xs ${backupProgress > i * 25 ? 'text-green-500' : 'text-gray-300'}`}>
                         <MdCheck className="w-3 h-3"/>
                         Backing up {table}...
                       </div>
@@ -289,7 +267,7 @@ export default function Backup() {
                     Restoring database...
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-2 bg-green-400 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                    <div className="h-2 bg-green-400 rounded-full animate-pulse" style={{ width: '60%' }}/>
                   </div>
                 </div>
               ) : (
@@ -323,14 +301,14 @@ export default function Backup() {
                     <span className="font-medium">23.4 MB / 100 GB</span>
                   </div>
                   <div className="w-full h-2 bg-gray-100 rounded-full">
-                    <div className="h-2 bg-purple-400 rounded-full" style={{ width: '0.23%' }}></div>
+                    <div className="h-2 bg-purple-400 rounded-full" style={{ width: '0.23%' }}/>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   {[
                     { label: 'Database', value: '18.2 MB', icon: FaDatabase },
-                    { label: 'Face Data', value: '5.2 MB', icon: MdFolder },
-                    { label: 'Backups', value: '23.4 MB', icon: MdCloud },
+                    { label: 'Face Data', value: '5.2 MB',  icon: MdFolder },
+                    { label: 'Backups',   value: '23.4 MB', icon: MdCloud },
                     { label: 'Available', value: '99.9 GB', icon: MdStorage },
                   ].map((item, i) => {
                     const Icon = item.icon;
@@ -350,8 +328,8 @@ export default function Backup() {
           {/* Tabs */}
           <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
             {[
-              { key: 'backups', label: 'Backup History', icon: MdBackup },
-              { key: 'schedule', label: 'Auto Schedule', icon: MdSchedule },
+              { key: 'backups',  label: 'Backup History', icon: MdBackup },
+              { key: 'schedule', label: 'Auto Schedule',  icon: MdSchedule },
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -366,7 +344,7 @@ export default function Backup() {
             })}
           </div>
 
-          {/* BACKUP HISTORY TAB */}
+          {/* ── BACKUP HISTORY TAB ── */}
           {activeTab === 'backups' && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
@@ -377,6 +355,7 @@ export default function Backup() {
                   Refresh
                 </button>
               </div>
+
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
@@ -386,7 +365,7 @@ export default function Backup() {
                   </tr>
                 </thead>
                 <tbody>
-                  {backups.map((backup, i) => (
+                  {backups.map(backup => (
                     <tr key={backup.id} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
 
                       {/* Name */}
@@ -401,6 +380,7 @@ export default function Backup() {
                         </div>
                       </td>
 
+                      {/* Date */}
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-1 text-xs text-gray-500">
                           <MdCalendarToday className="w-3.5 h-3.5"/>
@@ -408,10 +388,12 @@ export default function Backup() {
                         </div>
                       </td>
 
+                      {/* Size */}
                       <td className="px-5 py-3">
                         <span className="text-xs font-medium text-gray-600">{backup.size}</span>
                       </td>
 
+                      {/* Type */}
                       <td className="px-5 py-3">
                         <span className={`text-xs px-2.5 py-1 rounded-full border font-medium
                           ${backup.type === 'Auto'
@@ -421,6 +403,7 @@ export default function Backup() {
                         </span>
                       </td>
 
+                      {/* Tables */}
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap gap-1">
                           {backup.tables.length > 0 ? (
@@ -435,6 +418,7 @@ export default function Backup() {
                         </div>
                       </td>
 
+                      {/* Status */}
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium
                           ${backup.status === 'Success'
@@ -452,23 +436,17 @@ export default function Backup() {
                         <div className="flex items-center gap-1">
                           {backup.status === 'Success' && (
                             <>
-                              <button
-                                onClick={() => handleDownload(backup)}
-                                title="Download"
+                              <button onClick={() => handleDownload(backup)} title="Download"
                                 className="p-1.5 text-blue-400 hover:bg-blue-50 rounded-lg transition-all">
                                 <MdDownload className="w-4 h-4"/>
                               </button>
-                              <button
-                                onClick={() => setRestoreId(backup.id)}
-                                title="Restore"
+                              <button onClick={() => setRestoreId(backup.id)} title="Restore"
                                 className="p-1.5 text-green-400 hover:bg-green-50 rounded-lg transition-all">
                                 <MdRefresh className="w-4 h-4"/>
                               </button>
                             </>
                           )}
-                          <button
-                            onClick={() => setDeleteId(backup.id)}
-                            title="Delete"
+                          <button onClick={() => setDeleteId(backup.id)} title="Delete"
                             className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg transition-all">
                             <MdDelete className="w-4 h-4"/>
                           </button>
@@ -489,7 +467,7 @@ export default function Backup() {
             </div>
           )}
 
-          {/* SCHEDULE TAB */}
+          {/* ── SCHEDULE TAB ── */}
           {activeTab === 'schedule' && (
             <div className="space-y-5">
 
@@ -506,10 +484,10 @@ export default function Backup() {
                       {scheduleSettings.enabled ? 'Enabled' : 'Disabled'}
                     </span>
                     <button
-                      onClick={() => setScheduleSettings(s => ({...s, enabled: !s.enabled}))}
+                      onClick={() => setScheduleSettings(s => ({ ...s, enabled: !s.enabled }))}
                       className={`w-11 h-6 rounded-full transition-all duration-300 relative ${scheduleSettings.enabled ? 'bg-blue-500' : 'bg-gray-200'}`}>
                       <span className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all duration-300"
-                        style={{ left: scheduleSettings.enabled ? '22px' : '2px' }}></span>
+                        style={{ left: scheduleSettings.enabled ? '22px' : '2px' }}/>
                     </button>
                   </div>
                 </div>
@@ -520,7 +498,7 @@ export default function Backup() {
                     <div>
                       <label className="text-gray-700 text-sm font-medium mb-1.5 block">Backup Frequency</label>
                       <select value={scheduleSettings.frequency}
-                        onChange={e => setScheduleSettings({...scheduleSettings, frequency: e.target.value})}
+                        onChange={e => setScheduleSettings({ ...scheduleSettings, frequency: e.target.value })}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 bg-white">
                         <option value="hourly">Every Hour</option>
                         <option value="daily">Daily</option>
@@ -532,14 +510,14 @@ export default function Backup() {
                     <div>
                       <label className="text-gray-700 text-sm font-medium mb-1.5 block">Backup Time</label>
                       <input type="time" value={scheduleSettings.time}
-                        onChange={e => setScheduleSettings({...scheduleSettings, time: e.target.value})}
+                        onChange={e => setScheduleSettings({ ...scheduleSettings, time: e.target.value })}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"/>
                     </div>
 
                     <div>
                       <label className="text-gray-700 text-sm font-medium mb-1.5 block">Retention Period (days)</label>
                       <input type="number" value={scheduleSettings.retention}
-                        onChange={e => setScheduleSettings({...scheduleSettings, retention: e.target.value})}
+                        onChange={e => setScheduleSettings({ ...scheduleSettings, retention: e.target.value })}
                         className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400"
                         min="1" max="365"/>
                       <p className="text-xs text-gray-400 mt-1">Backups older than this will be deleted</p>
@@ -561,7 +539,7 @@ export default function Backup() {
                                   : 'border-gray-200 hover:bg-gray-50'}`}>
                               <input type="radio"
                                 checked={scheduleSettings.destination === dest.key}
-                                onChange={() => setScheduleSettings({...scheduleSettings, destination: dest.key})}
+                                onChange={() => setScheduleSettings({ ...scheduleSettings, destination: dest.key })}
                                 className="text-blue-500"/>
                               <Icon className={`w-4 h-4 ${scheduleSettings.destination === dest.key ? 'text-blue-500' : 'text-gray-400'}`}/>
                               <span className={`text-sm font-medium ${scheduleSettings.destination === dest.key ? 'text-blue-700' : 'text-gray-600'}`}>
@@ -582,9 +560,9 @@ export default function Backup() {
                         <p className="text-sm font-semibold text-blue-800">Schedule Preview</p>
                         <p className="text-xs text-blue-600 mt-1">
                           Next backup: <span className="font-medium">
-                            {scheduleSettings.frequency === 'daily' ? `Today at ${scheduleSettings.time}`
-                              : scheduleSettings.frequency === 'weekly' ? `Next week at ${scheduleSettings.time}`
-                              : scheduleSettings.frequency === 'hourly' ? 'Every hour'
+                            {scheduleSettings.frequency === 'daily'   ? `Today at ${scheduleSettings.time}`
+                              : scheduleSettings.frequency === 'weekly'  ? `Next week at ${scheduleSettings.time}`
+                              : scheduleSettings.frequency === 'hourly'  ? 'Every hour'
                               : `Next month at ${scheduleSettings.time}`}
                           </span>
                         </p>
@@ -605,14 +583,14 @@ export default function Backup() {
                 </div>
               </div>
 
-              {/* Next Scheduled Backups */}
+              {/* Upcoming Scheduled Backups */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <h3 className="font-semibold text-gray-800 text-sm mb-4">Upcoming Scheduled Backups</h3>
                 <div className="space-y-3">
                   {[
-                    { label: 'Today', time: scheduleSettings.time, status: 'Scheduled' },
-                    { label: 'Tomorrow', time: scheduleSettings.time, status: 'Scheduled' },
-                    { label: 'Day After', time: scheduleSettings.time, status: 'Scheduled' },
+                    { label: 'Today',      time: scheduleSettings.time, status: 'Scheduled' },
+                    { label: 'Tomorrow',   time: scheduleSettings.time, status: 'Scheduled' },
+                    { label: 'Day After',  time: scheduleSettings.time, status: 'Scheduled' },
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                       <div className="flex items-center gap-3">
@@ -636,7 +614,7 @@ export default function Backup() {
         </div>
       </div>
 
-      {/* Delete Modal */}
+      {/* ── Delete Modal ── */}
       {deleteId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
@@ -661,7 +639,7 @@ export default function Backup() {
         </div>
       )}
 
-      {/* Restore Modal */}
+      {/* ── Restore Modal ── */}
       {restoreId && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
