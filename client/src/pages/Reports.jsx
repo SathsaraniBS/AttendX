@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass,
   MdBarChart, MdMenu, MdCalendarToday,
   MdDownload, MdPrint, MdFilterList,
-  MdCheckCircle, MdCancel, MdAccessTime,
-  MdTrendingUp, MdTrendingDown, MdRefresh
+  MdCheckCircle, MdAccessTime,
+  MdTrendingUp, MdTrendingDown, MdRefresh,
+  MdPeople, MdClass
 } from 'react-icons/md';
 import { FaUserCheck, FaUserTimes } from 'react-icons/fa';
 import {
@@ -15,11 +15,13 @@ import {
 } from 'recharts';
 import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 
-const STUDENTS_API   = 'http://localhost:5000/api/students/';
-const CLASSES_API    = 'http://localhost:5000/api/classes/';
-const ATTENDANCE_API = 'http://localhost:5000/api/attendance/history';
+// ── API base ──────────────────────────────────────────────────────────────────
+const BASE           = 'http://localhost:5000/api';
+const STUDENTS_API   = `${BASE}/students/`;
+const CLASSES_API    = `${BASE}/classes/`;
+const ATTENDANCE_API = `${BASE}/attendance/history`;
 
-// ─── helpers ─────────────────────────────────────────────────────────────────
+// ── Colour helpers ────────────────────────────────────────────────────────────
 const attendanceTextColor = (r) => {
   if (r >= 85) return 'text-green-600';
   if (r >= 70) return 'text-yellow-600';
@@ -36,26 +38,25 @@ const attendanceLabel = (r) => {
   return           { text: 'Needs Attention',    cls: 'bg-red-50 text-red-500 border-red-100' };
 };
 
-// Last N months labels
-const getLastNMonths = (n) => {
-  return Array.from({ length: n }, (_, i) => {
+// ── Last N months labels ──────────────────────────────────────────────────────
+const getLastNMonths = (n) =>
+  Array.from({ length: n }, (_, i) => {
     const d = new Date();
     d.setMonth(d.getMonth() - (n - 1 - i));
     return {
-      key:   d.toISOString().slice(0, 7),          // "2025-04"
+      key:   d.toISOString().slice(0, 7),
       label: d.toLocaleDateString('en-US', { month: 'short' }),
     };
   });
-};
 
-// Last 6 weeks helper
+// ── Week key helper ───────────────────────────────────────────────────────────
 const getWeekKey = (dateStr) => {
   const d   = new Date(dateStr);
   const day = d.getDate();
   return `W${Math.ceil(day / 7)}`;
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Reports() {
   const navigate = useNavigate();
   const [user,       setUser]       = useState(null);
@@ -66,13 +67,13 @@ export default function Reports() {
   const [refreshing, setRefreshing] = useState(false);
 
   // filters
-  const [period,         setPeriod]         = useState('monthly');
-  const [selectedClass,  setSelectedClass]  = useState('All');
-  const [dateFrom,       setDateFrom]       = useState('');
-  const [dateTo,         setDateTo]         = useState('');
-  const [activeTab,      setActiveTab]      = useState('overview');
+  const [period,        setPeriod]        = useState('monthly');
+  const [selectedClass, setSelectedClass] = useState('All');
+  const [dateFrom,      setDateFrom]      = useState('');
+  const [dateTo,        setDateTo]        = useState('');
+  const [activeTab,     setActiveTab]     = useState('overview');
 
-  // ── auth ────────────────────────────────────────────────────────────────────
+  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const token    = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
@@ -82,7 +83,7 @@ export default function Reports() {
     } catch { navigate('/'); }
   }, [navigate]);
 
-  // ── fetch — same Promise.all pattern as Classes.jsx ─────────────────────────
+  // ── Fetch all three APIs in parallel ──────────────────────────────────────
   const fetchAll = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else           setLoading(true);
@@ -97,17 +98,28 @@ export default function Reports() {
         fetch(ATTENDANCE_API, { headers }),
       ]);
 
-      if (studRes.ok)  setStudents(await studRes.json()  || []);
-      if (classRes.ok) setClasses(await classRes.json()  || []);
-      if (attRes.ok)   setAttendance(await attRes.json() || []);
+      if (studRes.ok)  {
+        const studs = await studRes.json();
+        setStudents(Array.isArray(studs) ? studs : []);
+        localStorage.setItem('attendx_students', JSON.stringify(studs));
+      }
+      if (classRes.ok) {
+        const cls = await classRes.json();
+        setClasses(Array.isArray(cls) ? cls : []);
+        localStorage.setItem('attendx_classes', JSON.stringify(cls));
+      }
+      if (attRes.ok) {
+        const att = await attRes.json();
+        setAttendance(Array.isArray(att) ? att : []);
+      }
 
     } catch (err) {
       console.error('Reports fetch error:', err);
-      // localStorage fallback
+      // ✅ localStorage fallback
       try {
         const cs = localStorage.getItem('attendx_students');
-        if (cs) setStudents(JSON.parse(cs));
         const cc = localStorage.getItem('attendx_classes');
+        if (cs) setStudents(JSON.parse(cs));
         if (cc) setClasses(JSON.parse(cc));
       } catch { /* ignore */ }
     } finally {
@@ -120,7 +132,7 @@ export default function Reports() {
 
   const handleLogout = () => { localStorage.clear(); navigate('/'); };
 
-  // ── apply date + class filter to raw attendance records ─────────────────────
+  // ── Apply date + class filter ─────────────────────────────────────────────
   const filteredRecords = attendance.filter(r => {
     const matchClass = selectedClass === 'All' || r.class === selectedClass;
     const matchFrom  = !dateFrom || r.date >= dateFrom;
@@ -128,23 +140,29 @@ export default function Reports() {
     return matchClass && matchFrom && matchTo;
   });
 
-  // ── top-level stats ──────────────────────────────────────────────────────────
-  const totalRecords  = filteredRecords.length;
-  const totalPresent  = filteredRecords.filter(r => r.status === 'Present').length;
-  const totalAbsent   = filteredRecords.filter(r => r.status === 'Absent').length;
-  const totalLate     = filteredRecords.filter(r => r.status === 'Late').length;
-  const overallRate   = totalRecords > 0 ? Math.round(((totalPresent + totalLate) / totalRecords) * 100) : 0;
+  // ── Top-level stats ───────────────────────────────────────────────────────
+  const totalRecords = filteredRecords.length;
+  const totalPresent = filteredRecords.filter(r => r.status === 'Present').length;
+  const totalAbsent  = filteredRecords.filter(r => r.status === 'Absent').length;
+  const totalLate    = filteredRecords.filter(r => r.status === 'Late').length;
+  const overallRate  = totalRecords > 0
+    ? Math.round(((totalPresent + totalLate) / totalRecords) * 100)
+    : 0;
 
-  // Previous period comparison (simple: compare first half vs second half of filtered)
+  // ✅ Period comparison — first half vs second half of filtered
   const half     = Math.floor(filteredRecords.length / 2);
   const firstH   = filteredRecords.slice(0, half);
   const secondH  = filteredRecords.slice(half);
-  const prevRate = firstH.length  > 0 ? Math.round((firstH.filter(r  => r.status !== 'Absent').length / firstH.length)  * 100) : 0;
-  const currRate = secondH.length > 0 ? Math.round((secondH.filter(r => r.status !== 'Absent').length / secondH.length) * 100) : 0;
+  const prevRate = firstH.length  > 0
+    ? Math.round((firstH.filter(r  => r.status !== 'Absent').length / firstH.length)  * 100)
+    : 0;
+  const currRate = secondH.length > 0
+    ? Math.round((secondH.filter(r => r.status !== 'Absent').length / secondH.length) * 100)
+    : 0;
   const rateDiff = currRate - prevRate;
 
-  // ── Monthly bar chart data (last 6 months) ───────────────────────────────────
-  const last6Months   = getLastNMonths(6);
+  // ── Monthly bar chart (last 6 months) ────────────────────────────────────
+  const last6Months      = getLastNMonths(6);
   const monthlyChartData = last6Months.map(({ key, label }) => {
     const recs    = filteredRecords.filter(r => r.date?.startsWith(key));
     const present = recs.filter(r => r.status === 'Present').length;
@@ -153,8 +171,8 @@ export default function Reports() {
     return { month: label, present, absent, late };
   });
 
-  // ── Weekly bar chart (current week by day name) ──────────────────────────────
-  const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  // ── Weekly bar chart (by day name) ────────────────────────────────────────
+  const DAY_NAMES      = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   const weeklyChartData = DAY_NAMES.map(day => {
     const recs  = filteredRecords.filter(r => r.day === day);
     const total = recs.length;
@@ -162,7 +180,7 @@ export default function Reports() {
     return { day, rate: total > 0 ? Math.round((pres / total) * 100) : 0 };
   });
 
-  // ── 6-week area chart ────────────────────────────────────────────────────────
+  // ── 6-week area chart ─────────────────────────────────────────────────────
   const weekGroups = {};
   filteredRecords.forEach(r => {
     if (!r.date) return;
@@ -179,17 +197,17 @@ export default function Reports() {
     .sort((a, b) => a.week.localeCompare(b.week))
     .slice(-6);
 
-  // ── Pie chart ────────────────────────────────────────────────────────────────
-  const presentPct = totalRecords > 0 ? Math.round(((totalPresent - totalLate) / totalRecords) * 100) : 0;
-  const absentPct  = totalRecords > 0 ? Math.round((totalAbsent / totalRecords) * 100) : 0;
-  const latePct    = totalRecords > 0 ? Math.round((totalLate   / totalRecords) * 100) : 0;
+  // ── Pie chart ─────────────────────────────────────────────────────────────
+  const presentPct  = totalRecords > 0 ? Math.round(((totalPresent) / totalRecords) * 100) : 0;
+  const absentPct   = totalRecords > 0 ? Math.round((totalAbsent  / totalRecords) * 100) : 0;
+  const latePct     = totalRecords > 0 ? Math.round((totalLate    / totalRecords) * 100) : 0;
   const pieChartData = [
     { name: 'Present', value: presentPct, color: '#3b82f6' },
     { name: 'Absent',  value: absentPct,  color: '#f87171' },
     { name: 'Late',    value: latePct,    color: '#fbbf24' },
   ];
 
-  // ── Class-wise report (from classes API — attendance already real SQL %) ──────
+  // ── Class-wise report ─────────────────────────────────────────────────────
   const classReport = classes
     .filter(c => selectedClass === 'All' || c.name === selectedClass)
     .map(c => {
@@ -197,14 +215,13 @@ export default function Reports() {
       const present = recs.filter(r => r.status === 'Present').length;
       const absent  = recs.filter(r => r.status === 'Absent').length;
       const late    = recs.filter(r => r.status === 'Late').length;
-      // prefer real SQL attendance from classes API when no local records filtered
-      const rate = recs.length > 0
+      const rate    = recs.length > 0
         ? Math.round(((present + late) / recs.length) * 100)
         : (c.attendance || 0);
       return { name: c.name, present, absent, late, rate, enrolled: c.enrolled || 0 };
     });
 
-  // ── Student-level report from students API ───────────────────────────────────
+  // ── Student-level report ──────────────────────────────────────────────────
   const studentReport = students
     .filter(s => selectedClass === 'All' || s.className === selectedClass)
     .map(s => ({ ...s, rate: s.attendance || 0 }))
@@ -213,10 +230,10 @@ export default function Reports() {
   const topStudents = studentReport.slice(0, 5);
   const lowStudents = studentReport.filter(s => s.rate < 75).slice(0, 5);
 
-  // ── Class options for filter dropdown ────────────────────────────────────────
+  // ── Class options for filter dropdown ─────────────────────────────────────
   const classOptions = [...new Set(classes.map(c => c.name).filter(Boolean))];
 
-  // ── CSV export ───────────────────────────────────────────────────────────────
+  // ── CSV export ────────────────────────────────────────────────────────────
   const exportCSV = () => {
     let headers, rows;
     if (activeTab === 'classes') {
@@ -244,12 +261,14 @@ export default function Reports() {
     a.click();
   };
 
-  // ── stat cards ───────────────────────────────────────────────────────────────
+  // ── Stat cards ────────────────────────────────────────────────────────────
   const stats = [
     {
       label: 'Overall Attendance',
       value: `${overallRate}%`,
-      sub:   rateDiff !== 0 ? `${rateDiff > 0 ? '+' : ''}${rateDiff}% vs prev period` : 'No comparison data',
+      sub:   rateDiff !== 0
+        ? `${rateDiff > 0 ? '+' : ''}${rateDiff}% vs prev period`
+        : 'No comparison data',
       icon:  MdBarChart,
       color: 'text-blue-600',
       bg:    'bg-blue-50',
@@ -284,7 +303,7 @@ export default function Reports() {
     },
   ];
 
-  // ─── render ──────────────────────────────────────────────────────────────────
+  // ── Loading state ─────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -299,6 +318,7 @@ export default function Reports() {
     );
   }
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSidebar user={user} onLogout={handleLogout}/>
@@ -374,14 +394,16 @@ export default function Reports() {
                 <button key={p}
                   onClick={() => setPeriod(p)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all
-                    ${period === p ? 'bg-blue-500 text-white' : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                    ${period === p
+                      ? 'bg-blue-500 text-white'
+                      : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                   {p}
                 </button>
               ))}
 
               <div className="w-px h-5 bg-gray-200 mx-1"/>
 
-              {/* Class filter — real classes from DB */}
+              {/* Class filter */}
               <select value={selectedClass}
                 onChange={e => setSelectedClass(e.target.value)}
                 className="border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-500 focus:outline-none bg-white">
@@ -389,6 +411,7 @@ export default function Reports() {
                 {classOptions.map(c => <option key={c}>{c}</option>)}
               </select>
 
+              {/* Date range */}
               <div className="flex items-center gap-2">
                 <input type="date" value={dateFrom}
                   onChange={e => setDateFrom(e.target.value)}
@@ -426,9 +449,9 @@ export default function Reports() {
           {/* ── Tabs ── */}
           <div className="flex gap-1 mb-5 bg-gray-100 p-1 rounded-xl w-fit">
             {[
-              { key: 'overview',  label: 'Overview',    icon: MdBarChart },
-              { key: 'classes',   label: 'By Class',    icon: MdClass    },
-              { key: 'students',  label: 'By Student',  icon: MdPeople   },
+              { key: 'overview', label: 'Overview',   icon: MdBarChart },
+              { key: 'classes',  label: 'By Class',   icon: MdClass },
+              { key: 'students', label: 'By Student', icon: MdPeople },
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -461,7 +484,7 @@ export default function Reports() {
 
               <div className="grid grid-cols-3 gap-5">
 
-                {/* Monthly Bar Chart — real monthly data */}
+                {/* Monthly Bar Chart */}
                 <div className="col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="font-semibold text-gray-800 text-sm">Monthly Attendance Overview</h3>
@@ -480,7 +503,7 @@ export default function Reports() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* Pie — real distribution */}
+                {/* Pie Distribution */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-semibold text-gray-800 text-sm mb-4">Attendance Distribution</h3>
                   <div className="relative">
@@ -521,7 +544,7 @@ export default function Reports() {
 
               <div className="grid grid-cols-2 gap-5">
 
-                {/* Weekly bar — real daily rates */}
+                {/* Weekly bar */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-semibold text-gray-800 text-sm mb-4">
                     Daily Attendance Rate (This Week)
@@ -542,7 +565,7 @@ export default function Reports() {
                   </ResponsiveContainer>
                 </div>
 
-                {/* 6-week area chart — real weekly trend */}
+                {/* 6-week area chart */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                   <h3 className="font-semibold text-gray-800 text-sm mb-4">
                     Weekly Attendance Trend
@@ -572,7 +595,7 @@ export default function Reports() {
           {activeTab === 'classes' && (
             <div className="space-y-5">
 
-              {/* Class bar chart — real data */}
+              {/* Class bar chart */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-gray-800 text-sm">Attendance Rate by Class</h3>
@@ -592,7 +615,7 @@ export default function Reports() {
                 </ResponsiveContainer>
               </div>
 
-              {/* Class detail table — real data */}
+              {/* Class detail table */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-center">
                   <h3 className="font-semibold text-gray-800 text-sm">Detailed Class Report</h3>
@@ -661,7 +684,7 @@ export default function Reports() {
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-5">
 
-                {/* Top Students — real from students API */}
+                {/* Top Students */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                     <MdTrendingUp className="w-4 h-4 text-green-500"/>
@@ -699,7 +722,7 @@ export default function Reports() {
                   </div>
                 </div>
 
-                {/* Low Students — real from students API */}
+                {/* Low Students */}
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
                     <MdTrendingDown className="w-4 h-4 text-red-400"/>
@@ -746,7 +769,7 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* All students bar chart — real attendance % from students API */}
+              {/* All students bar chart */}
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-gray-800 text-sm">
