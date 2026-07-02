@@ -1,23 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   MdCalendarToday, MdBarChart,
   MdCheckCircle, MdCancel, MdAccessTime,
-  MdSearch, MdDownload, MdHistory, MdRefresh
+  MdSearch, MdDownload, MdHistory, MdRefresh,
+  MdWarning, MdCameraAlt
 } from 'react-icons/md';
 import StudentSidebar from '../../components/StudentComponents/StudentSidebar';
 
+const BASE = 'http://localhost:5000/api';
+
 export default function StudentAttendance() {
   const navigate = useNavigate();
-  const [student, setStudent] = useState(null);
-  const [records, setRecords] = useState([]);  
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [student,      setStudent]      = useState(null);
+  const [records,      setRecords]      = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
 
+  // ── Auth + load ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const token = localStorage.getItem('student_token');
+    const token    = localStorage.getItem('student_token');
     const userData = localStorage.getItem('student_user');
     if (!token) { navigate('/'); return; }
     try {
@@ -29,15 +33,13 @@ export default function StudentAttendance() {
     } catch { navigate('/'); }
   }, [navigate]);
 
-  const fetchAttendance = async (studentId, token) => {
+  // ── Fetch ────────────────────────────────────────────────────────────────────
+  const fetchAttendance = useCallback(async (studentId, token) => {
     setLoading(true);
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/attendance/student/${studentId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000
-        }
+        `${BASE}/attendance/student/${studentId}`,
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
       );
       setRecords(res.data || []);
     } catch {
@@ -45,7 +47,7 @@ export default function StudentAttendance() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('student_token');
@@ -53,47 +55,49 @@ export default function StudentAttendance() {
     navigate('/');
   };
 
-  // ✅ Filter
+  // ── Filter ───────────────────────────────────────────────────────────────────
   const filtered = records.filter(r => {
     const matchSearch =
-      (r.date || '').includes(search) ||
+      (r.date   || '').includes(search) ||
       (r.status || '').toLowerCase().includes(search.toLowerCase()) ||
-      (r.day || '').toLowerCase().includes(search.toLowerCase());
+      (r.day    || '').toLowerCase().includes(search.toLowerCase());
     const matchFilter = filterStatus === 'All' || r.status === filterStatus;
     return matchSearch && matchFilter;
   });
 
-  // ✅ Stats
+  // ── Stats ────────────────────────────────────────────────────────────────────
   const presentCount = records.filter(r => r.status === 'Present').length;
   const absentCount  = records.filter(r => r.status === 'Absent').length;
   const lateCount    = records.filter(r => r.status === 'Late').length;
   const total        = records.length;
-  const rate         = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+  // ✅ Fix: Late is also "attended" — include in rate
+  const rate         = total > 0 ? Math.round(((presentCount + lateCount) / total) * 100) : 0;
 
-  // ✅ Export CSV
+  // ── Export CSV ───────────────────────────────────────────────────────────────
   const exportCSV = () => {
     const headers = ['Date', 'Day', 'Status', 'Check-in Time'];
-    const rows = filtered.map(r =>
+    const rows    = filtered.map(r =>
       [r.date || '', r.day || '', r.status || '', r.time || ''].join(',')
     );
-    const csv = [headers.join(','), ...rows].join('\n');
+    const csv  = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `attendance_${student?.name?.replace(' ', '_') || 'student'}.csv`;
     a.click();
   };
 
+  // ── Loading ──────────────────────────────────────────────────────────────────
   if (!student) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin"/>
     </div>
   );
 
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
-
       <StudentSidebar student={student} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
@@ -131,12 +135,12 @@ export default function StudentAttendance() {
               {
                 label: 'Attendance Rate',
                 value: `${rate}%`,
-                icon: MdBarChart,
+                icon:  MdBarChart,
                 color: rate >= 85 ? 'text-green-600' : rate >= 75 ? 'text-yellow-600' : 'text-red-500',
-                bg: 'bg-blue-50'
+                bg:    'bg-blue-50',
               },
-              { label: 'Present', value: presentCount, icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-              { label: 'Absent',  value: absentCount,  icon: MdCancel,      color: 'text-red-500',   bg: 'bg-red-50' },
+              { label: 'Present', value: presentCount, icon: MdCheckCircle, color: 'text-green-600',  bg: 'bg-green-50' },
+              { label: 'Absent',  value: absentCount,  icon: MdCancel,      color: 'text-red-500',    bg: 'bg-red-50' },
               { label: 'Late',    value: lateCount,    icon: MdAccessTime,  color: 'text-yellow-600', bg: 'bg-yellow-50' },
             ].map((s, i) => {
               const Icon = s.icon;
@@ -151,6 +155,19 @@ export default function StudentAttendance() {
               );
             })}
           </div>
+
+          {/* ✅ Low attendance warning */}
+          {total > 0 && rate < 75 && (
+            <div className="flex items-start gap-3 p-4 bg-red-50 rounded-xl border border-red-100">
+              <MdWarning className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"/>
+              <div>
+                <p className="text-sm font-medium text-red-700">Low Attendance Warning!</p>
+                <p className="text-xs text-red-500 mt-0.5">
+                  Minimum 75% required. You need {75 - rate}% more.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Toolbar */}
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
@@ -173,7 +190,7 @@ export default function StudentAttendance() {
                       ${filterStatus === s
                         ? s === 'Present' ? 'bg-green-500 text-white'
                           : s === 'Absent' ? 'bg-red-500 text-white'
-                          : s === 'Late' ? 'bg-yellow-400 text-white'
+                          : s === 'Late'   ? 'bg-yellow-400 text-white'
                           : 'bg-blue-500 text-white'
                         : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                     {s}
@@ -224,7 +241,7 @@ export default function StudentAttendance() {
                       <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-all">
                         <td className="px-5 py-3 text-xs text-gray-400">{i + 1}</td>
                         <td className="px-5 py-3 text-sm font-medium text-gray-700">{rec.date || '—'}</td>
-                        <td className="px-5 py-3 text-sm text-gray-500">{rec.day || '—'}</td>
+                        <td className="px-5 py-3 text-sm text-gray-500">{rec.day  || '—'}</td>
                         <td className="px-5 py-3">
                           <span className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium
                             ${rec.status === 'Present'
@@ -260,6 +277,13 @@ export default function StudentAttendance() {
                         ? 'Attendance will appear here after classes'
                         : 'Try adjusting your filters'}
                     </p>
+                    {records.length === 0 && (
+                      <button
+                        onClick={() => navigate('/student-mark-attendance')}
+                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-xl hover:bg-blue-600 transition-all">
+                        <MdCameraAlt className="w-4 h-4"/> Mark Attendance
+                      </button>
+                    )}
                   </div>
                 )}
 
