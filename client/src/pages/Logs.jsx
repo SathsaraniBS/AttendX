@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MdDashboard, MdPeople, MdClass, MdBarChart,
   MdMenu, MdCalendarToday,
   MdSearch, MdDownload,
   MdRefresh, MdDeleteSweep,
-  MdPerson, MdComputer,
+  MdPerson, MdComputer, MdPeople, MdClass, MdBarChart,
   MdCheckCircle, MdError, MdWarning,
   MdInfo, MdChevronLeft, MdChevronRight,
   MdClose, MdCheck, MdAccessTime,
@@ -17,21 +16,21 @@ import AdminSidebar from '../components/AdminComponents/AdminSidebar';
 // ==================== SAMPLE LOG DATA ====================
 const generateLogs = () => {
   const actions = [
-    { action: 'User Login', type: 'auth', level: 'info', user: 'Admin', detail: 'Successful login from Chrome/Windows', ip: '192.168.1.1' },
-    { action: 'Student Added', type: 'student', level: 'success', user: 'Admin', detail: 'New student Kasun Perera (S2024009) registered', ip: '192.168.1.1' },
-    { action: 'Attendance Marked', type: 'attendance', level: 'success', user: 'System', detail: '24 students marked present in BCA-2A', ip: '192.168.1.1' },
-    { action: 'Backup Created', type: 'system', level: 'success', user: 'System', detail: 'Automatic backup completed — 23.4 MB', ip: '192.168.1.1' },
-    { action: 'Face Recognition', type: 'camera', level: 'success', user: 'System', detail: 'Nimal Silva recognized — attendance marked', ip: '192.168.1.1' },
-    { action: 'Login Failed', type: 'auth', level: 'error', user: 'Unknown', detail: 'Failed login attempt — invalid credentials', ip: '192.168.1.50' },
-    { action: 'Student Deleted', type: 'student', level: 'warning', user: 'Admin', detail: 'Student Eranga Bandara (S2024008) removed', ip: '192.168.1.1' },
-    { action: 'Settings Updated', type: 'system', level: 'info', user: 'Admin', detail: 'System timezone changed to Asia/Colombo', ip: '192.168.1.1' },
-    { action: 'Password Changed', type: 'auth', level: 'info', user: 'Admin', detail: 'Admin password updated successfully', ip: '192.168.1.1' },
-    { action: 'Report Exported', type: 'report', level: 'info', user: 'Admin', detail: 'Attendance report exported as CSV', ip: '192.168.1.1' },
-    { action: 'Class Created', type: 'class', level: 'success', user: 'Admin', detail: 'New class MCA-2A added with capacity 30', ip: '192.168.1.1' },
-    { action: 'Camera Error', type: 'camera', level: 'error', user: 'System', detail: 'Camera connection lost — reconnecting...', ip: '192.168.1.1' },
-    { action: 'User Logout', type: 'auth', level: 'info', user: 'Admin', detail: 'Session ended successfully', ip: '192.168.1.1' },
-    { action: 'Restore Completed', type: 'system', level: 'success', user: 'Admin', detail: 'Database restored from backup_2026_06_04', ip: '192.168.1.1' },
-    { action: 'Face Not Recognized', type: 'camera', level: 'warning', user: 'System', detail: 'Unknown face detected — attendance not marked', ip: '192.168.1.1' },
+    { action: 'User Login',          type: 'auth',       level: 'info',    user: 'Admin',   detail: 'Successful login from Chrome/Windows',              ip: '192.168.1.1' },
+    { action: 'Student Added',       type: 'student',    level: 'success', user: 'Admin',   detail: 'New student Kasun Perera (S2024009) registered',    ip: '192.168.1.1' },
+    { action: 'Attendance Marked',   type: 'attendance', level: 'success', user: 'System',  detail: '24 students marked present in BCA-2A',              ip: '192.168.1.1' },
+    { action: 'Backup Created',      type: 'system',     level: 'success', user: 'System',  detail: 'Automatic backup completed — 23.4 MB',              ip: '192.168.1.1' },
+    { action: 'Face Recognition',    type: 'camera',     level: 'success', user: 'System',  detail: 'Nimal Silva recognized — attendance marked',         ip: '192.168.1.1' },
+    { action: 'Login Failed',        type: 'auth',       level: 'error',   user: 'Unknown', detail: 'Failed login attempt — invalid credentials',         ip: '192.168.1.50' },
+    { action: 'Student Deleted',     type: 'student',    level: 'warning', user: 'Admin',   detail: 'Student Eranga Bandara (S2024008) removed',         ip: '192.168.1.1' },
+    { action: 'Settings Updated',    type: 'system',     level: 'info',    user: 'Admin',   detail: 'System timezone changed to Asia/Colombo',           ip: '192.168.1.1' },
+    { action: 'Password Changed',    type: 'auth',       level: 'info',    user: 'Admin',   detail: 'Admin password updated successfully',               ip: '192.168.1.1' },
+    { action: 'Report Exported',     type: 'report',     level: 'info',    user: 'Admin',   detail: 'Attendance report exported as CSV',                 ip: '192.168.1.1' },
+    { action: 'Class Created',       type: 'class',      level: 'success', user: 'Admin',   detail: 'New class MCA-2A added with capacity 30',           ip: '192.168.1.1' },
+    { action: 'Camera Error',        type: 'camera',     level: 'error',   user: 'System',  detail: 'Camera connection lost — reconnecting...',          ip: '192.168.1.1' },
+    { action: 'User Logout',         type: 'auth',       level: 'info',    user: 'Admin',   detail: 'Session ended successfully',                        ip: '192.168.1.1' },
+    { action: 'Restore Completed',   type: 'system',     level: 'success', user: 'Admin',   detail: 'Database restored from backup_2026_06_04',          ip: '192.168.1.1' },
+    { action: 'Face Not Recognized', type: 'camera',     level: 'warning', user: 'System',  detail: 'Unknown face detected — attendance not marked',     ip: '192.168.1.1' },
   ];
 
   return actions.map((a, i) => {
@@ -44,9 +43,9 @@ const generateLogs = () => {
         year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       }),
-      date: date.toISOString(),
+      date:    date.toISOString(),
       browser: 'Chrome 120',
-      os: 'Windows 11',
+      os:      'Windows 11',
     };
   });
 };
@@ -54,18 +53,18 @@ const generateLogs = () => {
 // ==================== LOGS PAGE ====================
 export default function Logs() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [logs, setLogs] = useState(generateLogs());
-  const [search, setSearch] = useState('');
-  const [filterLevel, setFilterLevel] = useState('all');
-  const [filterType, setFilterType] = useState('all');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedLog, setSelectedLog] = useState(null);
-  const [toast, setToast] = useState(null);
+  const [user,         setUser]         = useState(null);
+  const [logs,         setLogs]         = useState(generateLogs());
+  const [search,       setSearch]       = useState('');
+  const [filterLevel,  setFilterLevel]  = useState('all');
+  const [filterType,   setFilterType]   = useState('all');
+  const [currentPage,  setCurrentPage]  = useState(1);
+  const [selectedLog,  setSelectedLog]  = useState(null);
+  const [toast,        setToast]        = useState(null);
   const perPage = 10;
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token    = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     if (!token) { navigate('/'); return; }
     try {
@@ -80,7 +79,7 @@ export default function Logs() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Filter ────────────────────────────────────────────────
+  // ── Filter ────────────────────────────────────────────────────────────────
   const filtered = logs.filter(log => {
     const matchSearch =
       log.action.toLowerCase().includes(search.toLowerCase()) ||
@@ -102,20 +101,20 @@ export default function Logs() {
 
   const exportLogs = () => {
     const headers = ['ID', 'Timestamp', 'Action', 'Type', 'Level', 'User', 'Detail', 'IP'];
-    const rows = filtered.map(l =>
+    const rows    = filtered.map(l =>
       [l.id, l.timestamp, l.action, l.type, l.level, l.user, l.detail, l.ip].join(',')
     );
-    const csv = [headers.join(','), ...rows].join('\n');
+    const csv  = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     showToast('Logs exported!');
   };
 
-  // ── Config ────────────────────────────────────────────────
+  // ── Config ────────────────────────────────────────────────────────────────
   const levelConfig = {
     success: { icon: MdCheckCircle, color: 'text-green-500',  bg: 'bg-green-50',  border: 'border-green-100',  badge: 'bg-green-100 text-green-700' },
     error:   { icon: MdError,       color: 'text-red-500',    bg: 'bg-red-50',    border: 'border-red-100',    badge: 'bg-red-100 text-red-700' },
@@ -124,27 +123,25 @@ export default function Logs() {
   };
 
   const typeConfig = {
-    auth:       { icon: FaUserShield,  color: 'text-purple-500', bg: 'bg-purple-50', label: 'Auth' },
-    student:    { icon: MdPeople,      color: 'text-blue-500',   bg: 'bg-blue-50',   label: 'Student' },
-    attendance: { icon: MdHistory,     color: 'text-green-500',  bg: 'bg-green-50',  label: 'Attendance' },
-    system:     { icon: MdComputer,    color: 'text-gray-500',   bg: 'bg-gray-50',   label: 'System' },
-    camera:     { icon: FaCamera,      color: 'text-orange-500', bg: 'bg-orange-50', label: 'Camera' },
-    report:     { icon: MdBarChart,    color: 'text-indigo-500', bg: 'bg-indigo-50', label: 'Report' },
-    class:      { icon: MdClass,       color: 'text-teal-500',   bg: 'bg-teal-50',   label: 'Class' },
+    auth:       { icon: FaUserShield, color: 'text-purple-500', bg: 'bg-purple-50', label: 'Auth' },
+    student:    { icon: MdPeople,     color: 'text-blue-500',   bg: 'bg-blue-50',   label: 'Student' },
+    attendance: { icon: MdHistory,    color: 'text-green-500',  bg: 'bg-green-50',  label: 'Attendance' },
+    system:     { icon: MdComputer,   color: 'text-gray-500',   bg: 'bg-gray-50',   label: 'System' },
+    camera:     { icon: FaCamera,     color: 'text-orange-500', bg: 'bg-orange-50', label: 'Camera' },
+    report:     { icon: MdBarChart,   color: 'text-indigo-500', bg: 'bg-indigo-50', label: 'Report' },
+    class:      { icon: MdClass,      color: 'text-teal-500',   bg: 'bg-teal-50',   label: 'Class' },
   };
 
   const stats = [
-    { label: 'Total Logs', value: logs.length,                                        icon: MdAssignment, color: 'text-blue-600',   bg: 'bg-blue-50' },
-    { label: 'Success',    value: logs.filter(l => l.level === 'success').length,     icon: MdCheckCircle, color: 'text-green-600', bg: 'bg-green-50' },
-    { label: 'Warnings',   value: logs.filter(l => l.level === 'warning').length,     icon: MdWarning,    color: 'text-yellow-600', bg: 'bg-yellow-50' },
-    { label: 'Errors',     value: logs.filter(l => l.level === 'error').length,       icon: MdError,      color: 'text-red-500',    bg: 'bg-red-50' },
+    { label: 'Total Logs', value: logs.length,                                    icon: MdAssignment,  color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { label: 'Success',    value: logs.filter(l => l.level === 'success').length, icon: MdCheckCircle, color: 'text-green-600',  bg: 'bg-green-50' },
+    { label: 'Warnings',   value: logs.filter(l => l.level === 'warning').length, icon: MdWarning,     color: 'text-yellow-600', bg: 'bg-yellow-50' },
+    { label: 'Errors',     value: logs.filter(l => l.level === 'error').length,   icon: MdError,       color: 'text-red-500',    bg: 'bg-red-50' },
   ];
 
-  // ── Render ────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen bg-gray-50">
-
-      {/* ✅ AdminSidebar — custom sidebar replace කළා */}
       <AdminSidebar user={user} onLogout={handleLogout}/>
 
       <div className="flex-1 ml-56">
@@ -219,8 +216,8 @@ export default function Logs() {
                           ${filterLevel === l
                             ? l === 'success' ? 'bg-green-500 text-white'
                               : l === 'warning' ? 'bg-yellow-400 text-white'
-                              : l === 'error' ? 'bg-red-500 text-white'
-                              : l === 'info' ? 'bg-blue-500 text-white'
+                              : l === 'error'   ? 'bg-red-500 text-white'
+                              : l === 'info'    ? 'bg-blue-500 text-white'
                               : 'bg-blue-500 text-white'
                             : 'border border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
                         {l}
@@ -246,18 +243,15 @@ export default function Logs() {
                   <div className="flex gap-2 ml-auto">
                     <button onClick={() => { setLogs(generateLogs()); showToast('Refreshed!'); }}
                       className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                      <MdRefresh className="w-4 h-4"/>
-                      Refresh
+                      <MdRefresh className="w-4 h-4"/> Refresh
                     </button>
                     <button onClick={exportLogs}
                       className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 rounded-xl text-xs text-gray-500 hover:bg-gray-50 transition-all">
-                      <MdDownload className="w-4 h-4"/>
-                      Export
+                      <MdDownload className="w-4 h-4"/> Export
                     </button>
                     <button onClick={clearLogs}
                       className="flex items-center gap-1.5 px-3 py-1.5 border border-red-100 rounded-xl text-xs text-red-400 hover:bg-red-50 transition-all">
-                      <MdDeleteSweep className="w-4 h-4"/>
-                      Clear All
+                      <MdDeleteSweep className="w-4 h-4"/> Clear All
                     </button>
                   </div>
                 </div>
@@ -275,41 +269,35 @@ export default function Logs() {
                   </thead>
                   <tbody>
                     {paginated.map((log, i) => {
-                      const lConfig = levelConfig[log.level];
-                      const tConfig = typeConfig[log.type] || typeConfig.system;
-                      const LIcon = lConfig.icon;
-                      const TIcon = tConfig.icon;
+                      const lConfig    = levelConfig[log.level];
+                      const tConfig    = typeConfig[log.type] || typeConfig.system;
+                      const LIcon      = lConfig.icon;
+                      const TIcon      = tConfig.icon;
                       const isSelected = selectedLog?.id === log.id;
-
                       return (
                         <tr key={log.id}
                           onClick={() => setSelectedLog(isSelected ? null : log)}
                           className={`border-b border-gray-50 hover:bg-gray-50 transition-all cursor-pointer
                             ${isSelected ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}>
-
                           <td className="px-4 py-3 text-xs text-gray-400">
                             {(currentPage - 1) * perPage + i + 1}
                           </td>
-
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
                               <MdAccessTime className="w-3.5 h-3.5"/>
                               {log.timestamp}
                             </div>
                           </td>
-
                           <td className="px-4 py-3">
                             <p className="text-sm font-medium text-gray-800 whitespace-nowrap">{log.action}</p>
                             <p className="text-xs text-gray-400 truncate max-w-48 mt-0.5">{log.detail}</p>
                           </td>
-
                           <td className="px-4 py-3">
                             <div className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ${tConfig.bg} ${tConfig.color} font-medium`}>
                               <TIcon className="w-3 h-3"/>
                               {tConfig.label}
                             </div>
                           </td>
-
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
@@ -318,14 +306,12 @@ export default function Logs() {
                               <span className="text-xs text-gray-600">{log.user}</span>
                             </div>
                           </td>
-
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border font-medium ${lConfig.badge}`}>
                               <LIcon className="w-3 h-3"/>
                               {log.level.charAt(0).toUpperCase() + log.level.slice(1)}
                             </span>
                           </td>
-
                           <td className="px-4 py-3">
                             <span className="text-xs font-mono text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
                               {log.ip}
@@ -384,8 +370,6 @@ export default function Logs() {
 
               {selectedLog ? (
                 <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden sticky top-24">
-
-                  {/* Header */}
                   <div className={`p-5 border-b ${levelConfig[selectedLog.level].bg} ${levelConfig[selectedLog.level].border}`}>
                     <div className="flex justify-between items-start">
                       <div className={`w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border ${levelConfig[selectedLog.level].border}`}>
@@ -394,8 +378,7 @@ export default function Logs() {
                           return <Icon className={`w-5 h-5 ${levelConfig[selectedLog.level].color}`}/>;
                         })()}
                       </div>
-                      <button onClick={() => setSelectedLog(null)}
-                        className="text-gray-400 hover:text-gray-600">
+                      <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-gray-600">
                         <MdClose className="w-4 h-4"/>
                       </button>
                     </div>
@@ -409,21 +392,18 @@ export default function Logs() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Body */}
                   <div className="p-5 space-y-4">
                     <div>
                       <p className="text-xs text-gray-400 mb-1">Description</p>
                       <p className="text-sm text-gray-700 leading-relaxed">{selectedLog.detail}</p>
                     </div>
-
                     <div className="space-y-3">
                       {[
-                        { icon: MdAccessTime, label: 'Timestamp', value: selectedLog.timestamp },
-                        { icon: MdPerson,     label: 'User',      value: selectedLog.user },
+                        { icon: MdAccessTime, label: 'Timestamp',  value: selectedLog.timestamp },
+                        { icon: MdPerson,     label: 'User',       value: selectedLog.user },
                         { icon: MdLocationOn, label: 'IP Address', value: selectedLog.ip },
-                        { icon: MdDevices,    label: 'Browser',   value: selectedLog.browser },
-                        { icon: MdComputer,   label: 'OS',        value: selectedLog.os },
+                        { icon: MdDevices,    label: 'Browser',    value: selectedLog.browser },
+                        { icon: MdComputer,   label: 'OS',         value: selectedLog.os },
                       ].map((item, i) => {
                         const Icon = item.icon;
                         return (
@@ -439,8 +419,6 @@ export default function Logs() {
                         );
                       })}
                     </div>
-
-                    {/* Log ID */}
                     <div className="bg-gray-50 rounded-xl p-3">
                       <p className="text-xs text-gray-400 mb-1">Log ID</p>
                       <p className="text-xs font-mono text-gray-600">
@@ -452,8 +430,6 @@ export default function Logs() {
 
               ) : (
                 <div className="space-y-4">
-
-                  {/* Empty Detail */}
                   <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-8 text-center">
                     <MdAssignment className="w-12 h-12 text-gray-200 mx-auto mb-3"/>
                     <p className="text-gray-400 font-medium text-sm">Select a log</p>
@@ -465,7 +441,7 @@ export default function Logs() {
                     <h3 className="font-semibold text-gray-700 text-sm mb-3">Log Types</h3>
                     <div className="space-y-2">
                       {Object.entries(typeConfig).map(([key, config]) => {
-                        const Icon = config.icon;
+                        const Icon  = config.icon;
                         const count = logs.filter(l => l.type === key).length;
                         return (
                           <div key={key}
@@ -487,7 +463,7 @@ export default function Logs() {
                     <h3 className="font-semibold text-gray-700 text-sm mb-3">Log Levels</h3>
                     <div className="space-y-2">
                       {Object.entries(levelConfig).map(([key, config]) => {
-                        const Icon = config.icon;
+                        const Icon  = config.icon;
                         const count = logs.filter(l => l.level === key).length;
                         return (
                           <div key={key}
