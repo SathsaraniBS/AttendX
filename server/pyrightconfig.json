@@ -3,6 +3,13 @@
   "venv": "venv",
   "pythonVersion": "3.12",
   "pythonPlatform": "Windows",
+  "typeCheckingMode": "off",
   "reportMissingImports": "none",
-  "reportMissingModuleSource": "none"
+  "reportMissingModuleSource": "none",
+  "reportUndefinedVariable": "none",
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/venv"
+  ]
 }
