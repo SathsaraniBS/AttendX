@@ -6,10 +6,10 @@
   "typeCheckingMode": "off",
   "reportMissingImports": "none",
   "reportMissingModuleSource": "none",
-  "reportUndefinedVariable": "none",
   "exclude": [
+    ".venv",
+    "venv",
     "**/node_modules",
-    "**/__pycache__",
-    "**/venv"
+    "**/__pycache__"
   ]
 }
