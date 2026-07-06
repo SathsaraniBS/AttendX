@@ -15,6 +15,10 @@ except ImportError:
     DEEPFACE_AVAILABLE = False
     print("⚠️ DeepFace not available — demo mode active")
 
+# ✅ MLOps: experiment tracking + DB monitoring
+from app.mlops.tracking import log_verification_attempt
+from app.mlops.monitoring import log_verification_to_db
+
 # ─────────────────────────────────────────────────────────────
 #  CONFIG
 #  Model     : Facenet512 (most accurate DeepFace model)
@@ -114,8 +118,12 @@ def encode_face_from_base64(image_base64: str):
 # ─────────────────────────────────────────────────────────────
 #  VERIFY — compare live face with stored encoding
 #  Returns: (verified: bool, message: str)
+#
+#  student_id, db_conn — optional, pass these from the calling
+#  route so this verification attempt gets logged to MLflow
+#  and the verification_logs table (MLOps monitoring).
 # ─────────────────────────────────────────────────────────────
-def verify_face(captured_base64: str, stored_encoding_json: str):
+def verify_face(captured_base64: str, stored_encoding_json: str, student_id=None, db_conn=None):
     temp_path = _get_temp_path('verify')
     try:
         if not DEEPFACE_AVAILABLE:
@@ -177,27 +185,47 @@ def verify_face(captured_base64: str, stored_encoding_json: str):
         # ── Decision: BOTH must pass ─────────────────────────
         cosine_ok    = cosine_dist    < COSINE_THRESHOLD
         euclidean_ok = euclidean_dist < EUCLIDEAN_THRESHOLD
+        verified     = cosine_ok and euclidean_ok
 
-        if cosine_ok and euclidean_ok:
-            return True, f"✅ Face verified! Confidence: {confidence}%"
-
-        # ── Helpful rejection messages ────────────────────────
-        if not cosine_ok and not euclidean_ok:
-            return False, (
+        if verified:
+            message = f"✅ Face verified! Confidence: {confidence}%"
+        elif not cosine_ok and not euclidean_ok:
+            message = (
                 f"❌ Face not matched! Confidence: {confidence}%. "
                 f"Try better lighting or face the camera directly."
             )
-        if not cosine_ok:
-            return False, (
+        elif not cosine_ok:
+            message = (
                 f"❌ Face not matched! Confidence: {confidence}% "
                 f"(cosine: {round(cosine_dist, 3)} — need < {COSINE_THRESHOLD}). "
                 f"Try better lighting or look directly at the camera."
             )
-        return False, (
-            f"❌ Face not matched! Confidence: {confidence}% "
-            f"(euclidean: {round(euclidean_dist, 2)} — need < {EUCLIDEAN_THRESHOLD}). "
-            f"Please re-register your face for better accuracy."
-        )
+        else:
+            message = (
+                f"❌ Face not matched! Confidence: {confidence}% "
+                f"(euclidean: {round(euclidean_dist, 2)} — need < {EUCLIDEAN_THRESHOLD}). "
+                f"Please re-register your face for better accuracy."
+            )
+
+        # ── ✅ MLOps: Log this verification attempt ──────────
+        # Logging is wrapped in try/except so a logging failure
+        # can NEVER break actual face verification (security-critical path).
+        try:
+            log_verification_attempt(
+                student_id=student_id,
+                cosine_distance=cosine_dist,
+                euclidean_distance=euclidean_dist,
+                confidence=confidence,
+                verified=verified
+            )
+            if db_conn is not None and student_id is not None:
+                log_verification_to_db(
+                    db_conn, student_id, cosine_dist, euclidean_dist, confidence, verified
+                )
+        except Exception as log_err:
+            print(f"⚠️ MLOps logging failed (non-critical): {log_err}")
+
+        return verified, message
 
     except ValueError as e:
         # Face not detected
