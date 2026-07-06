@@ -2,7 +2,7 @@
 import mlflow
 from datetime import datetime
 
-MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"  # local SQLite backend, simple සහ free
+MLFLOW_TRACKING_URI = "sqlite:///mlflow.db" 
 mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment("attendx-face-verification")
 
