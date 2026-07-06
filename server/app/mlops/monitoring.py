@@ -5,18 +5,19 @@ from datetime import datetime, timedelta
 CONFIDENCE_ALERT_THRESHOLD = 70.0  
 LOW_CONFIDENCE_RATE_THRESHOLD = 0.15  
 
+
 def check_model_drift(db_connection):
-    
+
     cursor = db_connection.cursor()
     try:
         cursor.execute("""
             SELECT AVG(confidence), 
-                   COUNT(*) FILTER (WHERE confidence < %s) * 1.0 / COUNT(*) as low_conf_rate,
+                   COUNT(*) FILTER (WHERE confidence < %s) * 1.0 / NULLIF(COUNT(*), 0) as low_conf_rate,
                    COUNT(*) as total_attempts
             FROM verification_logs
             WHERE created_at >= %s
         """, (CONFIDENCE_ALERT_THRESHOLD, datetime.now() - timedelta(hours=24)))
-        
+
         avg_confidence, low_conf_rate, total = cursor.fetchone()
 
         alerts = []
@@ -32,5 +33,26 @@ def check_model_drift(db_connection):
             "alerts": alerts,
             "status": "degraded" if alerts else "healthy"
         }
+    finally:
+        cursor.close()
+
+
+# ─────────────────────────────────────────────────────────────
+#  LOG — insert one verification attempt into verification_logs
+#  Called from recognizer.py -> verify_face() after every attempt.
+# ─────────────────────────────────────────────────────────────
+def log_verification_to_db(db_conn, student_id, cosine_distance, euclidean_distance, confidence, verified):
+
+    cursor = db_conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO verification_logs 
+                (student_id, cosine_distance, euclidean_distance, confidence, verified)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (student_id, cosine_distance, euclidean_distance, confidence, verified))
+        db_conn.commit()
+    except Exception as e:
+        db_conn.rollback()
+        print(f"⚠️ Failed to log verification to DB: {e}")
     finally:
         cursor.close()

@@ -125,7 +125,11 @@ def verify_student_face():
 
         # ── Mode 1: Real face recognition ────────────────────
         if FACE_RECOGNITION_AVAILABLE and stored_encoding:
-            verified, message = verify_face(image_base64, stored_encoding)
+        
+            verified, message = verify_face(
+                image_base64, stored_encoding,
+                student_id=student_id, db_conn=conn
+            )
             print(f"🔍 Real verify: {student_name} → {verified}")
             return jsonify({
                 'verified':     verified,
@@ -146,7 +150,6 @@ def verify_student_face():
 
         # ── Mode 3: Demo mode + NO photo/encoding ────────────
         # ✅ Fix: Allow attendance in demo mode even without photo
-        # Production-ෙලදී මේ section disable කරන්න
         else:
             print(f"⚠️ Demo bypass (no face data): {student_name}")
             return jsonify({
