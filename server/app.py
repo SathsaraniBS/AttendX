@@ -64,10 +64,31 @@ def not_found(e):
 def server_error(e):
     return jsonify({'error': 'Internal server error'}), 500
 
+# ── 🔥 Warm up DeepFace model at startup (avoids slow first request) ──────────
+def warm_up_model():
+    try:
+        from app.face_engine.recognizer import DeepFace, MODEL_NAME
+        import numpy as np
+        print("🔥 Warming up DeepFace model, please wait...")
+        dummy_img = np.zeros((224, 224, 3), dtype=np.uint8)
+        DeepFace.represent(
+            img_path=dummy_img,
+            model_name=MODEL_NAME,
+            enforce_detection=False,
+            detector_backend='opencv'
+        )
+        print("✅ DeepFace model warmed up and ready!")
+    except Exception as e:
+        print(f"⚠️ Model warm-up skipped: {e}")
+
 # ── Run ────────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     print("🚀 AttendX Backend Starting...")
     print(f"   CORS Origins : {ALLOWED_ORIGINS}")
     print(f"   Database     : {os.getenv('DATABASE_URL', 'NOT SET')}")
     print(f"   Port         : 5000")
+
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not app.debug:
+        warm_up_model()
+
     app.run(debug=True, port=5000)
