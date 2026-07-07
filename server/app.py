@@ -67,17 +67,33 @@ def server_error(e):
 # ── 🔥 Warm up DeepFace model at startup (avoids slow first request) ──────────
 def warm_up_model():
     try:
-        from app.face_engine.recognizer import DeepFace, MODEL_NAME
+        from app.face_engine.recognizer import DeepFace, MODEL_NAME, DETECTOR_BACKEND
         import numpy as np
         print("🔥 Warming up DeepFace model, please wait...")
         dummy_img = np.zeros((224, 224, 3), dtype=np.uint8)
+
+        # ✅ Warm up the PRIMARY detector (retinaface) — this is what
+        # verify_face() actually uses first, so this must be loaded now.
+        try:
+            DeepFace.represent(
+                img_path=dummy_img,
+                model_name=MODEL_NAME,
+                enforce_detection=False,
+                detector_backend=DETECTOR_BACKEND
+            )
+            print(f"✅ {DETECTOR_BACKEND} detector warmed up!")
+        except Exception as e:
+            print(f"⚠️ {DETECTOR_BACKEND} warm-up failed (non-critical): {e}")
+
+        # ✅ Also warm up the FALLBACK detector (opencv) — used when
+        # retinaface fails to detect a face.
         DeepFace.represent(
             img_path=dummy_img,
             model_name=MODEL_NAME,
             enforce_detection=False,
             detector_backend='opencv'
         )
-        print("✅ DeepFace model warmed up and ready!")
+        print("✅ DeepFace model fully warmed up and ready!")
     except Exception as e:
         print(f"⚠️ Model warm-up skipped: {e}")
 
