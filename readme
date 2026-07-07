@@ -1,14 +1,166 @@
-admin@attendx.com
-admin123
+# AttendX — Smart Attendance Powered by AI
 
+A full-stack Face Recognition Attendance System built with React.js, Flask, PostgreSQL, and DeepFace (Facenet512). Includes an integrated MLOps layer for experiment tracking and model monitoring.
 
+---
+
+## 🧰 Tech Stack
+
+- **Frontend:** React.js, Tailwind CSS
+- **Backend:** Python, Flask
+- **Database:** PostgreSQL
+- **Face Recognition:** DeepFace (Facenet512 model), OpenCV
+- **MLOps:** MLflow (experiment tracking), custom drift monitoring, PostgreSQL verification logging
+
+---
+
+## ✨ Features
+
+- Face-recognition-based attendance marking (webcam capture → real-time verification)
+- Admin dashboard — manage students, classes, attendance records, reports
+- Student dashboard — mark attendance, view attendance history, profile
+- JWT authentication with role-based access (Admin / Student)
+- Rate limiting (Flask-Limiter) and input validation (Marshmallow)
+- **MLOps monitoring:**
+  - MLflow experiment tracking for every face verification attempt (cosine distance, Euclidean distance, confidence score)
+  - PostgreSQL `verification_logs` table for persistent audit trail
+  - Model drift detection — flags degraded confidence trends over rolling time windows
+  - Model warm-up at startup to eliminate cold-start latency on first request
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.12+
+- Node.js + npm
+- PostgreSQL (running locally, e.g. on port 5433)
+
+### 1. Clone & Set Up the Backend
+
+```bash
+cd server
+
+# Create and activate a virtual environment (Windows PowerShell)
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### 2. Configure Environment Variables
+
+Create a `.env` file inside `server/` with:
+
+```
+DATABASE_URL=postgresql://postgres:<your_password>@localhost:5433/attendx_db
+SECRET_KEY=your_secret_key_here
+ALLOWED_ORIGINS=http://localhost:3000
+```
+
+### 3. Set Up the Database
+
+Open pgAdmin or `psql`, create the `attendx_db` database, then run the schema/migration scripts in `server/` (tables: `students`, `classes`, `attendance`, `users`, `verification_logs`).
+
+### 4. Run the Backend
+
+```bash
 python app.py
+```
 
+On startup, the server will:
+- Load DeepFace and warm up the face recognition model (retinaface + opencv detectors)
+- Connect to PostgreSQL
+- Start on `http://127.0.0.1:5000`
 
-Admin
+You should see:
+```
+✅ DeepFace loaded!
+🚀 AttendX Backend Starting...
+🔥 Warming up DeepFace model, please wait...
+✅ DeepFace model fully warmed up and ready!
+ * Running on http://127.0.0.1:5000
+```
+
+### 5. Run the Frontend
+
+In a separate terminal:
+
+```bash
+cd client
+npm install
+npm start
+```
+
+The app will open at `http://localhost:3000`.
+
+### 6. (Optional) View MLflow Experiment Tracking
+
+```bash
+cd server
+mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
+```
+
+Open `http://localhost:5001` to view logged verification runs, metrics, and comparisons.
+
+⚠️ Don't run `mlflow ui` and the Flask server's write operations at the exact same time on a heavily loaded system — both use the same SQLite file. For normal use this is not an issue.
+
+---
+
+## 🔐 Demo Credentials
+
+**Admin**
+```
 admin@attendx.com
 admin123
+```
 
-Student
+**Student**
+```
 kasun.perera@student.attendx.lk
 kasun.perera
+```
+
+---
+
+## 🧪 MLOps Architecture
+
+```
+Face Verification Request
+        │
+        ▼
+DeepFace (Facenet512) → cosine + Euclidean distance → confidence score
+        │
+        ├──► MLflow (experiment tracking — every attempt logged)
+        │
+        └──► PostgreSQL verification_logs (persistent audit trail)
+                    │
+                    ▼
+          check_model_drift() — monitors rolling 24h window,
+          flags degraded average confidence or high low-confidence rate
+```
+
+**Known engineering fixes along the way** (documented for reference):
+- Numpy `float64`/`bool_` types must be explicitly cast to native Python `float`/`bool` before insertion via psycopg2 — otherwise PostgreSQL raises a parse error.
+- DeepFace's first inference call after server startup is significantly slower (model + detector weights loading into memory) — resolved with a startup warm-up routine that pre-loads both the primary (`retinaface`) and fallback (`opencv`) detectors.
+
+---
+
+## 📁 Project Structure
+
+```
+face-attendance-system/
+├── client/                  # React frontend
+│   └── src/
+├── server/
+│   ├── app/
+│   │   ├── face_engine/     # DeepFace recognition logic
+│   │   ├── mlops/           # MLflow tracking + drift monitoring
+│   │   ├── models/
+│   │   └── routes/          # Flask blueprints (auth, students, classes, attendance, face)
+│   ├── app.py                # Entry point
+│   └── requirements.txt
+```
