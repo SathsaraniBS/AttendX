@@ -125,7 +125,7 @@ def verify_student_face():
 
         # ── Mode 1: Real face recognition ────────────────────
         if FACE_RECOGNITION_AVAILABLE and stored_encoding:
-        
+
             verified, message = verify_face(
                 image_base64, stored_encoding,
                 student_id=student_id, db_conn=conn
@@ -202,6 +202,25 @@ def face_status(student_id):
 
     except Exception as e:
         print(f"❌ Status Error: {e}")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        if conn:
+            try: conn.close()
+            except Exception: pass
+
+
+# ==================== MODEL HEALTH (MLOps Monitoring) ====================
+@face_bp.route('/model-health', methods=['GET'])
+def model_health():
+    
+    conn = None
+    try:
+        from app.mlops.monitoring import check_model_drift
+        conn = get_db()
+        health = check_model_drift(conn)
+        return jsonify(health), 200
+    except Exception as e:
+        print(f"❌ Model Health Error: {e}")
         return jsonify({'error': str(e)}), 500
     finally:
         if conn:
