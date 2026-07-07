@@ -213,14 +213,21 @@ def verify_face(captured_base64: str, stored_encoding_json: str, student_id=None
         try:
             log_verification_attempt(
                 student_id=student_id,
-                cosine_distance=cosine_dist,
-                euclidean_distance=euclidean_dist,
-                confidence=confidence,
-                verified=verified
+                cosine_distance=float(cosine_dist),
+                euclidean_distance=float(euclidean_dist),
+                confidence=float(confidence),
+                verified=bool(verified)
             )
             if db_conn is not None and student_id is not None:
+                # ✅ FIX: numpy float64 values must be converted to plain
+                # Python float/bool before psycopg2 can insert them —
+                # otherwise the query breaks with 'schema "np" does not exist'
                 log_verification_to_db(
-                    db_conn, student_id, cosine_dist, euclidean_dist, confidence, verified
+                    db_conn, student_id,
+                    float(cosine_dist),
+                    float(euclidean_dist),
+                    float(confidence),
+                    bool(verified)
                 )
         except Exception as log_err:
             print(f"⚠️ MLOps logging failed (non-critical): {log_err}")
