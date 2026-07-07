@@ -121,7 +121,7 @@ export default function StudentMarkAttendance() {
       const verifyRes = await axios.post(
         `${BASE}/face/verify`,
         { studentId: student.id, image: imageSrc },
-        { headers: { Authorization: `Bearer ${token}` }, timeout: 15000 }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 60000 }
       );
 
       if (verifyRes.data?.verified) {
