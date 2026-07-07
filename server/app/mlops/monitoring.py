@@ -20,6 +20,12 @@ def check_model_drift(db_connection):
 
         avg_confidence, low_conf_rate, total = cursor.fetchone()
 
+        # ✅ FIX: PostgreSQL NUMERIC division returns a Decimal that can
+        # print as scientific notation (e.g. "0E-20"). Convert to plain
+        # Python float so the API always returns a clean, predictable number.
+        avg_confidence = float(avg_confidence) if avg_confidence is not None else 0.0
+        low_conf_rate  = float(low_conf_rate)  if low_conf_rate  is not None else 0.0
+
         alerts = []
         if avg_confidence and avg_confidence < CONFIDENCE_ALERT_THRESHOLD:
             alerts.append(f"⚠️ Average confidence dropped to {avg_confidence:.1f}%")
@@ -27,8 +33,8 @@ def check_model_drift(db_connection):
             alerts.append(f"⚠️ {low_conf_rate*100:.1f}% of verifications had low confidence")
 
         return {
-            "avg_confidence": avg_confidence,
-            "low_confidence_rate": low_conf_rate,
+            "avg_confidence": round(avg_confidence, 2),
+            "low_confidence_rate": round(low_conf_rate, 4),
             "total_attempts": total,
             "alerts": alerts,
             "status": "degraded" if alerts else "healthy"
