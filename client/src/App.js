@@ -5,7 +5,6 @@ import './App.css';
 // ===== ADMIN PAGES =====
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
-import LiveAttendance from './pages/LiveAttendance';
 import AttendanceHistory from './pages/attendance/AttendanceHistory';
 import StudentList from './pages/students/StudentList';
 import Reports from './pages/Reports';
@@ -33,9 +32,7 @@ function App() {
         <Route path="/admin-dashboard" element={
           <ProtectedRoute adminOnly={true}><AdminDashboard /></ProtectedRoute>
         } />
-        <Route path="/live" element={
-          <ProtectedRoute adminOnly={true}><LiveAttendance /></ProtectedRoute>
-        } />
+       
         <Route path="/attendance" element={
           <ProtectedRoute adminOnly={true}><AttendanceHistory /></ProtectedRoute>
         } />
