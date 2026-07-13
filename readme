@@ -1,6 +1,8 @@
 # AttendX — Smart Attendance Powered by AI
 
-A full-stack Face Recognition Attendance System built with React.js, Flask, PostgreSQL, and DeepFace (Facenet512). Includes an integrated MLOps layer for experiment tracking and model monitoring.
+![CI](https://github.com/SathsaraniBS/AttendX/actions/workflows/tests.yml/badge.svg)
+
+A full-stack Face Recognition Attendance System built with React.js, Flask, PostgreSQL, and DeepFace (Facenet512). Includes an integrated MLOps layer for experiment tracking and model monitoring, a Dockerized backend, and an automated CI pipeline.
 
 ---
 
@@ -11,6 +13,7 @@ A full-stack Face Recognition Attendance System built with React.js, Flask, Post
 - **Database:** PostgreSQL
 - **Face Recognition:** DeepFace (Facenet512 model), OpenCV
 - **MLOps:** MLflow (experiment tracking), custom drift monitoring, PostgreSQL verification logging
+- **DevOps:** Docker, GitHub Actions (CI), pytest
 
 ---
 
@@ -26,6 +29,11 @@ A full-stack Face Recognition Attendance System built with React.js, Flask, Post
   - PostgreSQL `verification_logs` table for persistent audit trail
   - Model drift detection — flags degraded confidence trends over rolling time windows
   - Model warm-up at startup to eliminate cold-start latency on first request
+  - `GET /api/face/model-health` — exposes live drift/confidence stats for dashboards or monitoring tools
+- **DevOps / reliability:**
+  - Containerized backend (Docker) for reproducible, portable deployment
+  - Automated test suite (pytest) covering face-verification distance logic and core API endpoints
+  - CI pipeline (GitHub Actions) that spins up a fresh PostgreSQL instance and runs the full test suite on every push
 
 ---
 
@@ -36,6 +44,7 @@ A full-stack Face Recognition Attendance System built with React.js, Flask, Post
 - Python 3.12+
 - Node.js + npm
 - PostgreSQL (running locally, e.g. on port 5433)
+- Docker Desktop (optional — only needed for the containerized workflow)
 
 ### 1. Clone & Set Up the Backend
 
@@ -63,7 +72,13 @@ ALLOWED_ORIGINS=http://localhost:3000
 
 ### 3. Set Up the Database
 
-Open pgAdmin or `psql`, create the `attendx_db` database, then run the schema/migration scripts in `server/` (tables: `students`, `classes`, `attendance`, `users`, `verification_logs`).
+Open pgAdmin or `psql`, create the `attendx_db` database, then run the schema:
+
+```bash
+psql -U postgres -d attendx_db -f schema.sql
+```
+
+This creates all required tables (`users`, `students`, `classes`, `attendance`, `verification_logs`) and seeds the demo admin user.
 
 ### 4. Run the Backend
 
@@ -108,6 +123,42 @@ Open `http://localhost:5001` to view logged verification runs, metrics, and comp
 
 ⚠️ Don't run `mlflow ui` and the Flask server's write operations at the exact same time on a heavily loaded system — both use the same SQLite file. For normal use this is not an issue.
 
+### 7. (Optional) Run with Docker
+
+Build and run the backend as a container instead of a local Python process:
+
+```bash
+cd server
+docker build -t attendx-backend .
+docker run -p 5000:5000 --env-file .env attendx-backend
+```
+
+The Flask app binds to `0.0.0.0` inside the container so it's reachable from the host machine at `http://localhost:5000`. Note that `DATABASE_URL` inside `.env` must point to a database the container can actually reach (e.g. `host.docker.internal` instead of `localhost` on Windows/Mac if PostgreSQL is running on the host).
+
+### 8. Run the Test Suite
+
+```bash
+cd server
+python -m pytest tests/ -v
+```
+
+This runs:
+- **Unit tests** for the face-verification distance math (cosine/Euclidean thresholds, identical-embedding and zero-vector edge cases)
+- **Integration tests** for the Flask API (health check, login success/failure paths, 404 handling) using Flask's test client — no real server process required
+
+---
+
+## 🔁 Continuous Integration
+
+Every push to `main` triggers a GitHub Actions workflow (`.github/workflows/tests.yml`) that:
+
+1. Spins up a temporary PostgreSQL 15 service container
+2. Installs backend dependencies
+3. Applies `schema.sql` to the fresh database
+4. Runs the full pytest suite against it
+
+This catches integration issues (like missing dependencies or schema drift) before they reach production — the same pipeline caught and helped fix a missing `pytest` dependency and a missing database schema during initial setup.
+
 ---
 
 ## 🔐 Demo Credentials
@@ -141,11 +192,16 @@ DeepFace (Facenet512) → cosine + Euclidean distance → confidence score
                     ▼
           check_model_drift() — monitors rolling 24h window,
           flags degraded average confidence or high low-confidence rate
+                    │
+                    ▼
+          GET /api/face/model-health — exposes current status as JSON
 ```
 
 **Known engineering fixes along the way** (documented for reference):
 - Numpy `float64`/`bool_` types must be explicitly cast to native Python `float`/`bool` before insertion via psycopg2 — otherwise PostgreSQL raises a parse error.
 - DeepFace's first inference call after server startup is significantly slower (model + detector weights loading into memory) — resolved with a startup warm-up routine that pre-loads both the primary (`retinaface`) and fallback (`opencv`) detectors.
+- Inside a Docker container, Flask must bind to `0.0.0.0` rather than the default `127.0.0.1` — otherwise the host machine cannot reach the app despite correct port mapping.
+- `pip freeze`-generated requirements files can pin OS-specific packages (e.g. `pywin32`) and cause unresolvable dependency conflicts in a Linux container/CI environment — resolved by hand-curating `requirements.txt` to only the packages actually imported by the app, with loosened version constraints where needed.
 
 ---
 
@@ -153,6 +209,9 @@ DeepFace (Facenet512) → cosine + Euclidean distance → confidence score
 
 ```
 face-attendance-system/
+├── .github/
+│   └── workflows/
+│       └── tests.yml         # CI pipeline — runs pytest against a fresh Postgres instance
 ├── client/                  # React frontend
 │   └── src/
 ├── server/
@@ -161,6 +220,10 @@ face-attendance-system/
 │   │   ├── mlops/           # MLflow tracking + drift monitoring
 │   │   ├── models/
 │   │   └── routes/          # Flask blueprints (auth, students, classes, attendance, face)
-│   ├── app.py                # Entry point
+│   ├── tests/                # pytest suite (unit + integration)
+│   ├── app.py                 # Entry point
+│   ├── Dockerfile
+│   ├── .dockerignore
+│   ├── schema.sql             # DB schema used both locally and in CI
 │   └── requirements.txt
 ```
