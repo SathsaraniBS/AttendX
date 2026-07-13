@@ -37,13 +37,20 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgl1 libglib2.0-0
+          sudo apt-get install -y libgl1 libglib2.0-0 postgresql-client
 
       - name: Install Python dependencies
         working-directory: ./server
         run: |
           pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Apply database schema
+        working-directory: ./server
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d attendx_db -f schema.sql
 
       - name: Run tests
         working-directory: ./server
